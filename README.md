@@ -1,8 +1,8 @@
 # Pizzasale API
 
-A microservices-based backend for a pizza restaurant ecommerce platform, built with **FastAPI**, **PostgreSQL**, and **RabbitMQ**.
+A microservices-based ecommerce platform for a pizza restaurant, built with **FastAPI**, **PostgreSQL**, **RabbitMQ**, and a **React** frontend.
 
-Users can register, verify their email, and authenticate securely. A new registration triggers an asynchronous, event-driven workflow that creates a user profile in a separate service. Profiles can be read and updated through a JWT-protected API. A separate catalog service exposes a public, browsable menu — categories and products with size-based pricing — while keeping all writes restricted to staff accounts. Users can add items to a persistent cart, check out with real-time price verification, and pay through Paystack's hosted checkout page — with webhook-driven order status updates flowing back through the system automatically. No service touches another's database, and no service calls another's API except where synchronous communication is the correct architectural choice.
+Users can register, verify their email, and authenticate securely. A new registration triggers an asynchronous, event-driven workflow that creates a user profile in a separate service. Profiles can be read and updated through a JWT-protected API. A separate catalog service exposes a public, browsable menu — categories and products with size-based pricing — while keeping all writes restricted to staff accounts. Users can add items to a persistent cart, check out with real-time price verification, and pay through Paystack's hosted checkout page — with webhook-driven order status updates flowing back through the system automatically. The entire flow is accessible through a React single-page application served by nginx, which proxies API calls to the appropriate backend service so the frontend never knows the system is split across five separate services. No service touches another's database, and no service calls another's API except where synchronous communication is the correct architectural choice.
 
 ---
 
@@ -20,9 +20,23 @@ This project follows four complementary patterns:
 
 **5. Synchronous service-to-service calls where correctness requires it** — checkout verifies live prices against `product-service` and initializes payment via `payment-service` synchronously. This is a deliberate exception to the event-driven default: a user sitting at the checkout screen needs an immediate answer, and a failed payment must fail the whole checkout atomically rather than leaving an order in an ambiguous state.
 
-**6. Webhook-driven external integration** — `payment-service` receives Paystack webhooks, verifies every request's HMAC-SHA512 signature before processing, re-verifies the transaction with Paystack's API (never trusting the webhook body alone), then updates the order status and publishes a `payment.succeeded` event — all without any polling or user-initiated confirmation.
+**6. Webhook-driven external integration** — `payment-service` receives Paystack webhooks, verifies every request's HMAC-SHA512 signature before processing, re-verifies the transaction with Paystack's API (never trusting the webhook body alone), then updates the order status and publishes a `payment.succeeded` event — all without any polling or user-initiated confirmation. The webhook handler acknowledges with `200` immediately after signature verification and processes the actual payment update in a background task, since Paystack times out each delivery attempt after 30 seconds and would otherwise re-deliver the same webhook on a slow response.
+
+**7. Saga pattern with reconciliation, not distributed transactions** — a payment confirmation and its corresponding order status update live in two separate databases, so true atomicity across both is not achievable (and 2PC was deliberately rejected as the wrong tool for this scale). Instead: `payment-service` writes its own state first (the durable source of truth for "was this charged"), then synchronously calls `order-service` with retry-with-backoff. If that exhausts all retries, a standalone reconciliation script (`scripts/reconcile_payments.py`) detects and repairs the gap on a cron schedule. This was deliberately tested against a real induced mismatch, not just designed and assumed correct.
+
+**8. Nginx as a unified frontend gateway** — the React SPA makes all API calls to `/api/*` on the same origin (port 3000). nginx routes each prefix to the correct backend service internally. The frontend has no knowledge of the microservice split; from its perspective, it's talking to one API.
 
 ```text
+                    ┌──────────────────────────────────┐
+                    │   frontend (React + nginx)        │
+                    │   port 3000                       │
+                    │   /api/auth/*   → auth-service    │
+                    │   /api/users/*  → user-service    │
+                    │   /api/products/* → product-svc   │
+                    │   /api/orders/* → order-service   │
+                    │   /api/payments/* → payment-svc   │
+                    └──────────────┬───────────────────┘
+                                   │ same-origin proxy
 ┌──────────────┐   ┌──────────────┐   ┌────────────────────┐
 │ auth-service │   │ user-service │   │ product-service    │
 │  (FastAPI)   │   │  (FastAPI)   │   │  (FastAPI)         │
@@ -79,6 +93,12 @@ This project follows four complementary patterns:
 
 **Why re-verify the Paystack transaction after receiving the webhook, rather than trusting the webhook body?** A webhook endpoint is a public URL — anyone can POST to it. Verifying the HMAC-SHA512 signature proves the request came from Paystack, but the body could still contain stale or replayed data. Re-verifying with Paystack's API (`GET /transaction/verify/{reference}`) confirms the current state of the transaction directly from the source. This is Paystack's documented best practice and prevents a class of attacks where a valid signature is replayed with a modified body.
 
+**Why is the webhook handler's HTTP response decoupled from the actual payment processing?** Paystack times out each webhook delivery attempt after 30 seconds and will consider a slow or non-200 response a failed delivery, retrying the same webhook on a schedule (every 3 minutes for the first 4 tries in live mode, then hourly for 72 hours). If processing took long enough to risk that timeout, Paystack could re-deliver the same webhook while the first delivery was still being processed, causing duplicate work. The handler verifies the signature, returns `200` immediately, then processes the actual update (Paystack re-verification, DB writes, retry-to-order-service, event publishing) in a background task — decoupling acknowledgment from completion.
+
+**Why isn't payment confirmation and order status update a single atomic transaction?** They live in two separate PostgreSQL databases by design (database-per-service), and there is no way to span a single ACID transaction across both. Two-phase commit could theoretically provide that atomicity, but it's fragile in practice — it blocks on coordinator failure and is rarely the right tradeoff for this scale, which is why almost no production microservice system actually uses it. The system instead implements the saga pattern: `payment-service` commits its own state first (the source of truth for "was this actually charged"), then propagates that fact to `order-service` synchronously with retry-with-backoff. If propagation exhausts all retries — `order-service` was down for the entire retry window — a standalone reconciliation script closes the gap. The honest claim here is not "this can never be inconsistent," it's "any inconsistency is always eventually detected and corrected, and the detection mechanism has been tested against a real induced failure, not just assumed to work."
+
+**Why serve the frontend through nginx rather than a development server?** A dev server like Vite's built-in one serves React directly at `localhost:5173` while the backend APIs live at `localhost:8001–8005` — different origins, so every request triggers CORS preflight. nginx as a reverse proxy solves this cleanly: all traffic enters through `localhost:3000`, and the proxy routes `/api/*` to the right backend service based on path prefix. The frontend makes same-origin requests and knows nothing about the microservice topology behind nginx. This also mirrors exactly how a real deployment would be structured — nginx in front of multiple upstream services — so the local dev setup isn't a simplification of production, it is production-shaped.
+
 ---
 
 ## Services
@@ -91,6 +111,7 @@ This project follows four complementary patterns:
 | `product-service` | **Done** | `8003` | Public menu browsing (categories, products, size-based pricing); staff-only create/update/delete |
 | `order-service` | **Done** | `8004` | Persistent cart, checkout with live price verification, order lifecycle state machine (`pending_payment → confirmed → paid → shipped → delivered`) |
 | `payment-service` | **Done** | `8005` | Paystack initialize+verify flow, HMAC-SHA512 webhook verification, payment audit trail, publishes `payment.succeeded`/`payment.failed` |
+| `frontend` | **Done** | `3000` | React SPA (Vite + Tailwind) served by nginx; proxies `/api/*` to backend services — no CORS, no hardcoded service URLs |
 | `shipping-service` | Not started | — | Delivery tracking |
 
 ---
@@ -103,10 +124,12 @@ This project follows four complementary patterns:
 - **Message broker:** RabbitMQ (topic exchange, durable queues, manual ack)
 - **Auth:** JWT (access + refresh tokens) via `fastapi_jwt_auth2`, verified independently in every service that needs it, via a shared secret
 - **Email:** AWS SES (`boto3`)
-- **Payments:** Paystack (initialize + verify flow, HMAC-SHA512 webhook signature verification, NGN test mode)
+- **Payments:** Paystack (initialize + verify flow, HMAC-SHA512 webhook signature verification, NGN test mode, background-task webhook processing, retry-with-backoff for cross-service status propagation, cron-scheduled reconciliation as a saga-pattern backstop)
 - **Password hashing:** Werkzeug security helpers
 - **Containerization:** Docker + Docker Compose, BuildKit cache mounts for fast rebuilds
 - **Webhook tunneling (dev):** ngrok — exposes `payment-service` webhook endpoint to Paystack during local development
+- **Frontend:** React 18 (Vite), Tailwind CSS, React Router v6, axios
+- **Frontend serving:** nginx (multi-stage Docker build — Node builds the bundle, nginx serves the static files and proxies `/api/*` to backend services)
 
 ---
 
@@ -217,6 +240,56 @@ sudo -u postgres psql -d auth_service_db -c "UPDATE users_auth SET is_staff = tr
 
 The RabbitMQ management UI (`http://localhost:15672`) is useful for watching the event flow live — the **Exchanges → user_events** page shows a publish spike on each registration, and **Queues → user_service.user_registered** shows the consumer picking it up.
 
+### 6. Frontend
+
+```bash
+cd frontend
+npm install
+npm install -D tailwindcss@3 postcss autoprefixer
+npm install lucide-react react-router-dom@6 axios
+npx tailwindcss init -p
+npm run build   # verify it compiles cleanly before Docker
+```
+
+Then start the container:
+
+```bash
+cd ..
+docker compose up -d --build frontend
+```
+
+Open `http://localhost:3000` — the full user journey is available: register, verify email, log in, browse the menu, add to cart, check out, pay via Paystack, view order history with live status.
+
+### 7. Reconciliation script (runs on the host, not in Docker)
+
+```bash
+cd scripts
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+chmod +x run_reconciliation.sh
+```
+
+Dry run (no changes):
+
+```bash
+python3 reconcile_payments.py
+```
+
+Apply fixes:
+
+```bash
+python3 reconcile_payments.py --fix
+```
+
+Schedule via cron (`crontab -e`):
+
+```cron
+*/10 * * * * /absolute/path/to/pizzasale_api/scripts/run_reconciliation.sh
+```
+
+See `scripts/README.md` for full details.
+
 ---
 
 ## Project Structure
@@ -276,13 +349,28 @@ The RabbitMQ management UI (`http://localhost:15672`) is useful for watching the
 │   ├── alembic/
 │   ├── app/
 │   │   ├── api/                # POST /payments/initialize, POST /payments/webhook
-│   │   ├── db/
+│   │   ├── db/                 # session.py exposes get_session_factory() for background tasks
 │   │   ├── models/             # Payment (audit trail — every charge attempt recorded)
 │   │   ├── schemas/            # Initialize request/response shapes
 │   │   ├── services/           # PaymentService (initialize, webhook handling, verify)
-│   │   └── utils/              # paystack (API client), webhook (HMAC verification), events, order_client
+│   │   └── utils/              # paystack (API client), webhook (HMAC verification),
+│   │                           #   events, order_client (retry-with-backoff)
 │   ├── Dockerfile
 │   └── start.sh
+├── frontend/
+│   ├── src/
+│   │   ├── api/                # axios client — all requests to /api/* (nginx proxy)
+│   │   ├── components/         # Navbar, ProtectedRoute
+│   │   ├── context/            # AuthContext — JWT storage, login/logout, user state
+│   │   └── pages/              # Menu, Login, Register, Cart, Orders, OrderDetail, Profile
+│   ├── nginx.conf              # Serves React SPA; proxies /api/* to backend services
+│   └── Dockerfile              # Multi-stage: node:18-alpine builds, nginx:alpine serves
+├── scripts/
+│   ├── reconcile_payments.py   # saga-pattern backstop — detects/fixes payment↔order mismatches
+│   ├── run_reconciliation.sh   # cron wrapper — venv activation, logging, log rotation
+│   ├── requirements.txt        # httpx, psycopg2-binary (runs on host, not in Docker)
+│   ├── logs/                   # not committed — reconciliation run history
+│   └── README.md               # setup, manual usage, crontab entry
 ├── docker-compose.yml
 └── .env                        # not committed
 ```
@@ -300,19 +388,26 @@ The RabbitMQ management UI (`http://localhost:15672`) is useful for watching the
 - [x] Consistent `AuthJWTException` handling across all services — clean `401`/`403` responses instead of unhandled `500`s on missing/invalid tokens
 - [x] `order-service`: persistent cart, checkout with live price verification against `product-service`, order state machine (`draft → pending_payment → confirmed → paid`), `order.placed` event published
 - [x] `payment-service`: Paystack initialize+verify flow (test mode, NGN), HMAC-SHA512 webhook signature verification, transaction re-verification with Paystack API, `payment.succeeded`/`payment.failed` events published, order status updated via internal HTTP call
-- [x] UUID casting at route layer (Python-side, not relying on PostgreSQL implicit conversion) — consistent across all services, fixes SQLite test compatibility
-- [x] Per-service pytest suites running inside containers (226 tests across 4 services)
-- [x] Automated E2E test script covering full user journey across all 4 services
-- [ ] `payment-service`: tests
+- [x] `payment-service`: full pytest suite (55 tests) — initialize, webhook security, webhook processing, retry-with-backoff
+- [x] Webhook handler returns `200` immediately after signature verification and processes in a background task (Paystack's 30s delivery timeout safety)
+- [x] Retry-with-backoff for the payment→order status propagation call, tested against transient failures and network errors
+- [x] Reconciliation script (`scripts/reconcile_payments.py`) — detects and repairs payment/order status mismatches; tested against a real induced mismatch, not just designed
+- [x] Reconciliation running on a schedule via cron (`scripts/run_reconciliation.sh`) with logging and log rotation
+- [x] UUID casting at route layer — consistent across all services, fixes SQLite test compatibility
+- [x] Per-service pytest suites running inside containers (281 tests across 5 services: 78 + 30 + 56 + 62 + 55)
+- [x] Automated E2E test script covering full user journey across all 5 services
+- [x] React SPA (Vite + Tailwind) covering full user journey: register → login → browse menu → add to cart → checkout → Paystack payment → order history with payment status
+- [x] nginx reverse proxy serving the React app and routing `/api/*` to backend services — same-origin, no CORS
 - [ ] `shipping-service`: delivery tracking
-- [ ] `order-service-worker`: consumes `payment.succeeded` / `shipping.*` events to drive order state transitions beyond `paid`
+- [ ] `order-service-worker`: consumes `shipping.*` events to drive order state beyond `paid`
 - [ ] API gateway / service-to-service auth
 - [ ] SES production access (currently sandbox — verified recipients only)
 - [ ] Admin/staff-promotion endpoint (currently `is_staff` is only settable directly in Postgres)
 - [ ] Pass user email to `payment-service` from `user-service` rather than using a hardcoded placeholder
+- [ ] Reconciliation alerting — currently a failed fix only logs to stderr; no Slack/PagerDuty integration yet
 
 ---
 
 ## Why This Project Exists
 
-Built as a hands-on backend engineering project to practice production-relevant patterns: async Python, JWT auth and cross-service token verification, database-per-service architecture, event-driven service communication via RabbitMQ, relational data modeling for a real domain, real payment gateway integration (Paystack initialize+verify with webhook signature verification), and containerized local dev that mirrors how a real deployment would be wired — rather than a single-database CRUD tutorial. Several real production failure modes were deliberately worked through rather than avoided, including Postgres network/auth configuration across shifting Docker subnets, Docker layer-cache and BuildKit tuning, consumer idempotency under genuine message redelivery, an unhandled-exception gap in JWT error handling caught by testing the unhappy path rather than assuming it worked, authorization boundaries verified with actual cross-user and cross-permission requests, and the deliberate choice of synchronous vs. asynchronous communication based on the actual requirements of each interaction rather than defaulting to one pattern everywhere.
+Built as a hands-on engineering project to practice production-relevant patterns across the full stack: async Python microservices, JWT auth and cross-service token verification, database-per-service architecture, event-driven service communication via RabbitMQ, relational data modeling for a real domain, real payment gateway integration (Paystack initialize+verify with webhook signature verification), containerized local dev that mirrors how a real deployment would be wired, and a React frontend served through an nginx reverse proxy — all connected into one working system rather than isolated demos. Several real production failure modes were deliberately worked through rather than avoided, including Postgres network/auth configuration across shifting Docker subnets, Docker layer-cache and BuildKit tuning, consumer idempotency under genuine message redelivery, an unhandled-exception gap in JWT error handling caught by testing the unhappy path rather than assuming it worked, authorization boundaries verified with actual cross-user and cross-permission requests, the deliberate choice of synchronous vs. asynchronous communication based on the actual requirements of each interaction rather than defaulting to one pattern everywhere, and the explicit rejection of distributed-transaction atomicity in favor of a saga pattern with retry-with-backoff and reconciliation — a reconciliation script that was deliberately tested against a real, manually-induced database mismatch rather than trusted on the strength of its design alone.

@@ -145,6 +145,18 @@ services:
     volumes:
       - ./order-service:/app
 
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    restart: always
+    depends_on:
+      - auth-service
+      - user-service
+      - product-service
+      - order-service
+      - payment-service
+    ports:
+      - "3000:80"
   payment-service:
     build: ./payment-service
     container_name: payment-service
