@@ -9,7 +9,16 @@ on:
         description: "Deploy a single service (leave blank for full deploy)"
         required: false
         type: choice
-        options: ["", "auth-service", "user-service", "product-service"]
+        options:
+          - ""
+          - auth-service
+          - user-service
+          - product-service
+          - order-service
+          - payment-service
+          - shipping-service
+          - notification-service
+          - frontend
 
 concurrency:
   group: deploy-production
@@ -20,12 +29,16 @@ env:
   IMAGE_PREFIX: ${{ github.repository_owner }}/pizzasale
 
 # ── Required GitHub Secrets ────────────────────────────────────────────────────
-# DEPLOY_HOST           — server IP / hostname
-# DEPLOY_USER           — SSH user (e.g. ubuntu)
-# DEPLOY_SSH_KEY        — private SSH key (RSA or Ed25519)
-# AUTH_DATABASE_URL     — postgresql+asyncpg://...
-# USER_DATABASE_URL     — postgresql+asyncpg://...
-# PRODUCT_DATABASE_URL  — postgresql+asyncpg://...
+# DEPLOY_HOST               — server IP / hostname
+# DEPLOY_USER               — SSH user (e.g. ubuntu)
+# DEPLOY_SSH_KEY            — private SSH key (RSA or Ed25519)
+# AUTH_DATABASE_URL         — postgresql+asyncpg://...
+# USER_DATABASE_URL         — postgresql+asyncpg://...
+# PRODUCT_DATABASE_URL      — postgresql+asyncpg://...
+# ORDER_DATABASE_URL        — postgresql+asyncpg://...
+# PAYMENT_DATABASE_URL      — postgresql+asyncpg://...
+# SHIPPING_DATABASE_URL     — postgresql+asyncpg://...
+# NOTIFICATION_DATABASE_URL — postgresql+asyncpg://...
 # RABBITMQ_USER
 # RABBITMQ_PASSWORD
 # JWT_SECRET
@@ -33,7 +46,9 @@ env:
 # AWS_REGION
 # AWS_ACCESS_KEY_ID
 # AWS_SECRET_ACCESS_KEY
-# SLACK_WEBHOOK_URL     — optional, for failure alerts
+# PAYSTACK_SECRET_KEY
+# PAYSTACK_PUBLIC_KEY
+# SLACK_WEBHOOK_URL         — optional, for failure alerts
 # ──────────────────────────────────────────────────────────────────────────────
 
 jobs:
@@ -63,6 +78,16 @@ jobs:
             context: ./user-service
           - service: product-service
             context: ./product-service
+          - service: order-service
+            context: ./order-service
+          - service: payment-service
+            context: ./payment-service
+          - service: shipping-service
+            context: ./shipping-service
+          - service: notification-service
+            context: ./notification-service
+          - service: frontend
+            context: ./frontend
 
     # Skip individual service builds when workflow_dispatch targets one service
     # and this matrix entry isn't that service
@@ -170,6 +195,58 @@ jobs:
         working-directory: product-service
         run: alembic upgrade head
 
+      - name: Install Alembic deps (order-service)
+        working-directory: order-service
+        run: pip install -r requirements.txt
+
+      - name: Run order-service migrations
+        if: >
+          github.event.inputs.service == '' ||
+          github.event.inputs.service == 'order-service'
+        env:
+          DATABASE_URL: ${{ secrets.ORDER_DATABASE_URL }}
+        working-directory: order-service
+        run: alembic upgrade head
+
+      - name: Install Alembic deps (payment-service)
+        working-directory: payment-service
+        run: pip install -r requirements.txt
+
+      - name: Run payment-service migrations
+        if: >
+          github.event.inputs.service == '' ||
+          github.event.inputs.service == 'payment-service'
+        env:
+          DATABASE_URL: ${{ secrets.PAYMENT_DATABASE_URL }}
+        working-directory: payment-service
+        run: alembic upgrade head
+
+      - name: Install Alembic deps (shipping-service)
+        working-directory: shipping-service
+        run: pip install -r requirements.txt
+
+      - name: Run shipping-service migrations
+        if: >
+          github.event.inputs.service == '' ||
+          github.event.inputs.service == 'shipping-service'
+        env:
+          DATABASE_URL: ${{ secrets.SHIPPING_DATABASE_URL }}
+        working-directory: shipping-service
+        run: alembic upgrade head
+
+      - name: Install Alembic deps (notification-service)
+        working-directory: notification-service
+        run: pip install -r requirements.txt
+
+      - name: Run notification-service migrations
+        if: >
+          github.event.inputs.service == '' ||
+          github.event.inputs.service == 'notification-service'
+        env:
+          DATABASE_URL: ${{ secrets.NOTIFICATION_DATABASE_URL }}
+        working-directory: notification-service
+        run: alembic upgrade head
+
   # ── 4. Deploy to server ──────────────────────────────────────────────────────
   deploy:
     name: Deploy to production
@@ -200,22 +277,27 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
           TARGET_SERVICE: ${{ github.event.inputs.service }}
-          # Runtime secrets injected into the server's .env
-          AUTH_DATABASE_URL: ${{ secrets.AUTH_DATABASE_URL }}
-          USER_DATABASE_URL: ${{ secrets.USER_DATABASE_URL }}
-          PRODUCT_DATABASE_URL: ${{ secrets.PRODUCT_DATABASE_URL }}
-          RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
-          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          SES_SENDER_EMAIL: ${{ secrets.SES_SENDER_EMAIL }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AUTH_DATABASE_URL:         ${{ secrets.AUTH_DATABASE_URL }}
+          USER_DATABASE_URL:         ${{ secrets.USER_DATABASE_URL }}
+          PRODUCT_DATABASE_URL:      ${{ secrets.PRODUCT_DATABASE_URL }}
+          ORDER_DATABASE_URL:        ${{ secrets.ORDER_DATABASE_URL }}
+          PAYMENT_DATABASE_URL:      ${{ secrets.PAYMENT_DATABASE_URL }}
+          SHIPPING_DATABASE_URL:     ${{ secrets.SHIPPING_DATABASE_URL }}
+          NOTIFICATION_DATABASE_URL: ${{ secrets.NOTIFICATION_DATABASE_URL }}
+          RABBITMQ_USER:             ${{ secrets.RABBITMQ_USER }}
+          RABBITMQ_PASSWORD:         ${{ secrets.RABBITMQ_PASSWORD }}
+          JWT_SECRET:                ${{ secrets.JWT_SECRET }}
+          SES_SENDER_EMAIL:          ${{ secrets.SES_SENDER_EMAIL }}
+          AWS_REGION:                ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID:         ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY:     ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          PAYSTACK_SECRET_KEY:       ${{ secrets.PAYSTACK_SECRET_KEY }}
+          PAYSTACK_PUBLIC_KEY:       ${{ secrets.PAYSTACK_PUBLIC_KEY }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: IMAGE_TAG,REGISTRY,IMAGE_PREFIX,TARGET_SERVICE,AUTH_DATABASE_URL,USER_DATABASE_URL,PRODUCT_DATABASE_URL,RABBITMQ_USER,RABBITMQ_PASSWORD,JWT_SECRET,SES_SENDER_EMAIL,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY
+          envs: IMAGE_TAG,REGISTRY,IMAGE_PREFIX,TARGET_SERVICE,AUTH_DATABASE_URL,USER_DATABASE_URL,PRODUCT_DATABASE_URL,ORDER_DATABASE_URL,PAYMENT_DATABASE_URL,SHIPPING_DATABASE_URL,NOTIFICATION_DATABASE_URL,RABBITMQ_USER,RABBITMQ_PASSWORD,JWT_SECRET,SES_SENDER_EMAIL,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,PAYSTACK_SECRET_KEY,PAYSTACK_PUBLIC_KEY
           script: |
             set -euo pipefail
             cd ~/pizzasale_api
@@ -229,6 +311,10 @@ jobs:
             AUTH_DATABASE_URL=${AUTH_DATABASE_URL}
             USER_DATABASE_URL=${USER_DATABASE_URL}
             PRODUCT_DATABASE_URL=${PRODUCT_DATABASE_URL}
+            ORDER_DATABASE_URL=${ORDER_DATABASE_URL}
+            PAYMENT_DATABASE_URL=${PAYMENT_DATABASE_URL}
+            SHIPPING_DATABASE_URL=${SHIPPING_DATABASE_URL}
+            NOTIFICATION_DATABASE_URL=${NOTIFICATION_DATABASE_URL}
             RABBITMQ_USER=${RABBITMQ_USER}
             RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
             JWT_SECRET=${JWT_SECRET}
@@ -236,14 +322,20 @@ jobs:
             AWS_REGION=${AWS_REGION}
             AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+            PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+            PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY}
             ENVEOF
             chmod 600 .env
 
             # Override compose build: directives with pre-built registry images.
-            # docker compose will pull these instead of rebuilding locally.
             export AUTH_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-auth-service:${IMAGE_TAG}
             export USER_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-user-service:${IMAGE_TAG}
             export PRODUCT_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-product-service:${IMAGE_TAG}
+            export ORDER_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-order-service:${IMAGE_TAG}
+            export PAYMENT_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-payment-service:${IMAGE_TAG}
+            export SHIPPING_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-shipping-service:${IMAGE_TAG}
+            export NOTIFICATION_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-notification-service:${IMAGE_TAG}
+            export FRONTEND_IMAGE=${REGISTRY}/${IMAGE_PREFIX}-frontend:${IMAGE_TAG}
 
             if [ -n "${TARGET_SERVICE}" ]; then
               # Targeted single-service deploy (e.g. hotfix)
@@ -253,6 +345,10 @@ jobs:
               if [ "${TARGET_SERVICE}" = "user-service" ]; then
                 docker compose pull user-service-worker
                 docker compose up -d --no-deps user-service user-service-worker
+              # order-service-worker uses the same image as order-service
+              elif [ "${TARGET_SERVICE}" = "order-service" ]; then
+                docker compose pull order-service-worker
+                docker compose up -d --no-deps order-service order-service-worker
               else
                 docker compose up -d --no-deps "${TARGET_SERVICE}"
               fi
@@ -263,9 +359,6 @@ jobs:
             fi
 
             # ── Smoke check ───────────────────────────────────────────────────
-            # Wait for containers to settle, then verify all are running.
-            # Exits non-zero if any container is not in 'running' state,
-            # which fails the workflow and surfaces the issue immediately.
             sleep 20
             docker compose ps --format json \
               | python3 -c "
@@ -280,9 +373,7 @@ jobs:
             "
 
             # ── Health checks ─────────────────────────────────────────────────
-            # Hit each service's /health endpoint through Docker's internal
-            # network so we confirm the app itself is up, not just the process.
-            for port in 8001 8002 8003; do
+            for port in 8001 8002 8003 8004 8005 8006 3000; do
               status=$(curl -sf -o /dev/null -w "%{http_code}" \
                 --retry 5 --retry-delay 3 \
                 http://localhost:${port}/health || echo "000")

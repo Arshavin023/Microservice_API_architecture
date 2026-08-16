@@ -28,10 +28,10 @@ jobs:
         run: pip install ruff
 
       - name: Ruff lint
-        run: ruff check auth-service/ user-service/ product-service/
+        run: ruff check auth-service/ user-service/ product-service/ order-service/ payment-service/ shipping-service/ notification-service/
 
       - name: Ruff format check
-        run: ruff format --check auth-service/ user-service/ product-service/
+        run: ruff format --check auth-service/ user-service/ product-service/ order-service/ payment-service/ shipping-service/ notification-service/
 
   # ── auth-service ─────────────────────────────────────────────────────────────
   test-auth-service:
@@ -238,4 +238,219 @@ jobs:
         with:
           name: product-coverage
           path: product-service/coverage.xml
+          retention-days: 7
+
+  # ── order-service ─────────────────────────────────────────────────────────────
+  test-order-service:
+    name: order-service tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: order_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      rabbitmq:
+        image: rabbitmq:4-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: test_user
+          RABBITMQ_DEFAULT_PASS: test_password
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5672:5672
+
+    defaults:
+      run:
+        working-directory: order-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: order-service/requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/order_test_db
+          RABBITMQ_URL: amqp://test_user:test_password@localhost:5672/
+          JWT_SECRET: ci-test-secret-not-for-production
+          PRODUCT_SERVICE_URL: http://product-service:8000
+          PAYMENT_SERVICE_URL: http://payment-service:8000
+        run: |
+          python -m pytest tests/ -v \
+            --tb=short \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=70
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: order-coverage
+          path: order-service/coverage.xml
+          retention-days: 7
+
+  # ── payment-service ───────────────────────────────────────────────────────────
+  test-payment-service:
+    name: payment-service tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: payment_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      rabbitmq:
+        image: rabbitmq:4-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: test_user
+          RABBITMQ_DEFAULT_PASS: test_password
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5672:5672
+
+    defaults:
+      run:
+        working-directory: payment-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: payment-service/requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/payment_test_db
+          RABBITMQ_URL: amqp://test_user:test_password@localhost:5672/
+          # Tests read PAYSTACK_SECRET_KEY at import time via webhook.py.
+          # Use a known test value — tests compute signatures against this same key.
+          PAYSTACK_SECRET_KEY: ci-test-paystack-secret-not-real
+          ORDER_SERVICE_URL: http://order-service:8000
+        run: |
+          python -m pytest tests/ -v \
+            --tb=short \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=70
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payment-coverage
+          path: payment-service/coverage.xml
+          retention-days: 7
+
+  # ── shipping-service ──────────────────────────────────────────────────────────
+  test-shipping-service:
+    name: shipping-service tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: shipping_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      rabbitmq:
+        image: rabbitmq:4-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: test_user
+          RABBITMQ_DEFAULT_PASS: test_password
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5672:5672
+
+    defaults:
+      run:
+        working-directory: shipping-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: shipping-service/requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/shipping_test_db
+          RABBITMQ_URL: amqp://test_user:test_password@localhost:5672/
+          JWT_SECRET: ci-test-secret-not-for-production
+        run: |
+          python -m pytest tests/ -v \
+            --tb=short \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=70
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shipping-coverage
+          path: shipping-service/coverage.xml
           retention-days: 7
