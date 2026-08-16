@@ -1,0 +1,8 @@
+[lint]
+# I001 = import block unsorted — disabled because the codebase predates
+# ruff and fixing 393 files in one commit is noise. Enable and fix
+# incrementally once the team adopts isort as a standard.
+ignore = ["I001", "E501"]
+
+# Exclude alembic-generated migration files from all checks
+exclude = ["*/alembic/versions/*", "*/alembic/env.py"]

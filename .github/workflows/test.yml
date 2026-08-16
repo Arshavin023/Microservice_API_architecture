@@ -83,7 +83,7 @@ jobs:
           cache-dependency-path: auth-service/requirements*.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: pip install -r requirements.txt pytest-cov
 
       - name: Run tests
         env:
@@ -160,7 +160,7 @@ jobs:
           cache-dependency-path: user-service/requirements*.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: pip install -r requirements.txt pytest-cov
 
       - name: Run tests
         env:
@@ -218,7 +218,7 @@ jobs:
           cache-dependency-path: product-service/requirements*.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: pip install -r requirements.txt pytest-cov
 
       - name: Run tests
         env:
@@ -287,7 +287,7 @@ jobs:
           cache-dependency-path: order-service/requirements*.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest-cov
 
       - name: Run tests
         env:
@@ -359,7 +359,7 @@ jobs:
           cache-dependency-path: payment-service/requirements*.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest-cov
 
       - name: Run tests
         env:
@@ -432,7 +432,7 @@ jobs:
           cache-dependency-path: shipping-service/requirements*.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest-cov
 
       - name: Run tests
         env:
