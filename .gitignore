@@ -46,5 +46,6 @@ product-service/tests/*.txt
 order-service/tests/*.txt
 payment-service/tests/*.txt
 scripts/logs/
+scripts/logs/reconcile.log
 node_modules/
 node_modules/
