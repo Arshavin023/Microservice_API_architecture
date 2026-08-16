@@ -2,11 +2,13 @@
 [1m╔══════════════════════════════════════════════════════╗[0m
 [1m║     Pizzasale API — End-to-End User Journey Test     ║[0m
 [1m╚══════════════════════════════════════════════════════╝[0m
-  Auth:    http://localhost:8001
-  User:    http://localhost:8002
-  Product: http://localhost:8003
-  Order:   http://localhost:8004
-  Test user: e2e_user_1782816767
+  Auth:     http://localhost:8001
+  User:     http://localhost:8002
+  Product:  http://localhost:8003
+  Order:    http://localhost:8004
+  Payment:  http://localhost:8005
+  Shipping: http://localhost:8006
+  Test user: e2e_user_1786887960
 
 [0;34m[1m▶ Phase -1 — Service Unit Tests (inside containers)[0m
 
@@ -91,8 +93,8 @@ tests/test_schemas_and_security.py::TestVerificationToken::test_tampered_token_r
 tests/test_schemas_and_security.py::TestVerificationToken::test_empty_token_returns_none PASSED [100%]
 =============================== warnings summary ===============================
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 78 passed, 6 warnings in 9.92s ========================
-[0;32m✔ PASS[0m — auth-service tests: ======================== 78 passed, 6 warnings in 9.92s ========================
+======================= 78 passed, 6 warnings in 11.85s ========================
+[0;32m✔ PASS[0m — auth-service tests: ======================= 78 passed, 6 warnings in 11.85s ========================
 
   [1;33m▷ Running tests for user-service...[0m
 tests/test_consumer.py::TestProcessMessage::test_valid_message_acked PASSED [  3%]
@@ -129,8 +131,8 @@ tests/test_user_service.py::TestUpdateProfile::test_multiple_fields_updated_atom
   /app/app/schemas/user_schema.py:7: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
 tests/test_user_routes.py: 27 warnings
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 30 passed, 28 warnings in 0.67s ========================
-[0;32m✔ PASS[0m — user-service tests: ======================= 30 passed, 28 warnings in 0.67s ========================
+======================= 30 passed, 28 warnings in 0.82s ========================
+[0;32m✔ PASS[0m — user-service tests: ======================= 30 passed, 28 warnings in 0.82s ========================
 
   [1;33m▷ Running tests for product-service...[0m
 tests/test_category_routes.py::TestListCategories::test_empty_list PASSED [  1%]
@@ -196,8 +198,8 @@ tests/test_product_service.py::TestProductService::test_delete_product PASSED [1
 tests/test_category_routes.py: 66 warnings
 tests/test_product_routes.py: 141 warnings
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 56 passed, 210 warnings in 3.01s =======================
-[0;32m✔ PASS[0m — product-service tests: ======================= 56 passed, 210 warnings in 3.01s =======================
+======================= 56 passed, 210 warnings in 5.81s =======================
+[0;32m✔ PASS[0m — product-service tests: ======================= 56 passed, 210 warnings in 5.81s =======================
 
   [1;33m▷ Running tests for order-service...[0m
 tests/test_cart_service.py::TestGetActiveCart::test_returns_none_when_no_cart_exists PASSED [  1%]
@@ -276,71 +278,137 @@ tests/test_order_routes.py: 114 warnings
   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 62 passed, 197 warnings in 5.73s =======================
-[0;32m✔ PASS[0m — order-service tests: ======================= 62 passed, 197 warnings in 5.73s =======================
+======================= 62 passed, 197 warnings in 7.00s =======================
+[0;32m✔ PASS[0m — order-service tests: ======================= 62 passed, 197 warnings in 7.00s =======================
 
   [1;33m▷ Running tests for payment-service...[0m
-tests/test_payment_routes.py::TestInitializePayment::test_initialize_returns_201 PASSED [  2%]
-tests/test_payment_routes.py::TestInitializePayment::test_initialize_returns_authorization_url PASSED [  4%]
-tests/test_payment_routes.py::TestInitializePayment::test_initialize_returns_reference PASSED [  6%]
-tests/test_payment_routes.py::TestInitializePayment::test_initialize_missing_email_422 PASSED [  8%]
-tests/test_payment_routes.py::TestInitializePayment::test_initialize_missing_amount_422 PASSED [ 11%]
-tests/test_payment_routes.py::TestInitializePayment::test_initialize_paystack_error_returns_502 PASSED [ 13%]
-tests/test_payment_routes.py::TestWebhookSecurity::test_webhook_without_signature_returns_401 PASSED [ 15%]
-tests/test_payment_routes.py::TestWebhookSecurity::test_webhook_with_wrong_signature_returns_401 PASSED [ 17%]
-tests/test_payment_routes.py::TestWebhookSecurity::test_webhook_with_correct_signature_returns_200 PASSED [ 20%]
-tests/test_payment_routes.py::TestWebhookSecurity::test_tampered_body_with_original_signature_returns_401 PASSED [ 22%]
-tests/test_payment_routes.py::TestWebhookProcessing::test_charge_success_updates_payment_to_succeeded PASSED [ 24%]
-tests/test_payment_routes.py::TestWebhookProcessing::test_charge_failure_updates_payment_to_failed PASSED [ 26%]
-tests/test_payment_routes.py::TestWebhookProcessing::test_unknown_event_returns_200_and_is_ignored PASSED [ 28%]
-tests/test_payment_routes.py::TestWebhookProcessing::test_webhook_always_returns_200_even_on_internal_error PASSED [ 31%]
-tests/test_payment_routes.py::TestGetPaymentByOrder::test_returns_200_for_existing_payment PASSED [ 33%]
-tests/test_payment_routes.py::TestGetPaymentByOrder::test_returns_404_for_missing_order PASSED [ 35%]
-tests/test_payment_routes.py::test_health_check PASSED                   [ 37%]
-tests/test_payment_service.py::TestPaymentServiceInitialize::test_creates_pending_payment_record PASSED [ 40%]
-tests/test_payment_service.py::TestPaymentServiceInitialize::test_stores_paystack_reference PASSED [ 42%]
-tests/test_payment_service.py::TestPaymentServiceInitialize::test_stores_authorization_url PASSED [ 44%]
-tests/test_payment_service.py::TestPaymentServiceInitialize::test_raises_paystack_error_on_api_failure PASSED [ 46%]
-tests/test_payment_service.py::TestPaymentServiceInitialize::test_does_not_persist_on_paystack_failure PASSED [ 48%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_updates_payment_status_to_succeeded PASSED [ 51%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_re_verifies_with_paystack_api PASSED [ 53%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_calls_order_service_with_paid_status PASSED [ 55%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_publishes_payment_succeeded_event PASSED [ 57%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_does_not_update_if_verification_returns_non_success PASSED [ 60%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_does_not_update_if_verification_raises PASSED [ 62%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_ignores_unknown_reference PASSED [ 64%]
-tests/test_payment_service.py::TestHandleWebhookSuccess::test_ignores_missing_reference PASSED [ 66%]
-tests/test_payment_service.py::TestHandleWebhookFailure::test_updates_payment_status_to_failed PASSED [ 68%]
-tests/test_payment_service.py::TestHandleWebhookFailure::test_calls_order_service_with_cancelled_status PASSED [ 71%]
-tests/test_payment_service.py::TestHandleWebhookFailure::test_publishes_payment_failed_event PASSED [ 73%]
-tests/test_payment_service.py::TestHandleWebhookFailure::test_does_not_call_verify_on_failure PASSED [ 75%]
-tests/test_payment_service.py::TestHandleWebhookUnhandledEvents::test_ignores_unknown_event_types PASSED [ 77%]
-tests/test_payment_service.py::TestGetPaymentByOrder::test_returns_payment_for_existing_order PASSED [ 80%]
-tests/test_payment_service.py::TestGetPaymentByOrder::test_returns_none_for_unknown_order PASSED [ 82%]
-tests/test_webhook_security.py::TestVerifyWebhookSignature::test_valid_signature_returns_true PASSED [ 84%]
-tests/test_webhook_security.py::TestVerifyWebhookSignature::test_wrong_signature_returns_false PASSED [ 86%]
-tests/test_webhook_security.py::TestVerifyWebhookSignature::test_tampered_body_returns_false PASSED [ 88%]
-tests/test_webhook_security.py::TestVerifyWebhookSignature::test_empty_body_with_correct_signature_returns_true PASSED [ 91%]
-tests/test_webhook_security.py::TestVerifyWebhookSignature::test_empty_signature_returns_false PASSED [ 93%]
-tests/test_webhook_security.py::TestVerifyWebhookSignature::test_signature_from_different_secret_returns_false PASSED [ 95%]
-tests/test_webhook_security.py::TestVerifyWebhookSignature::test_is_constant_time_comparison PASSED [ 97%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusSuccess::test_succeeds_on_first_attempt PASSED [  1%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusSuccess::test_calls_correct_endpoint_and_payload PASSED [  3%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusRetry::test_succeeds_after_one_transient_failure PASSED [  5%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusRetry::test_succeeds_after_two_transient_failures PASSED [  7%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusRetry::test_retries_use_exponential_backoff PASSED [  9%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusRetry::test_recovers_from_network_error PASSED [ 10%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusExhaustedRetries::test_returns_false_after_max_retries_all_failing PASSED [ 12%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusExhaustedRetries::test_returns_false_when_order_service_always_unreachable PASSED [ 14%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusExhaustedRetries::test_does_not_retry_beyond_max_retries PASSED [ 16%]
+tests/test_order_client_retry.py::TestUpdateOrderStatusExhaustedRetries::test_logs_critical_on_exhausted_retries PASSED [ 18%]
+tests/test_payment_routes.py::TestInitializePayment::test_initialize_returns_201 PASSED [ 20%]
+tests/test_payment_routes.py::TestInitializePayment::test_initialize_returns_authorization_url PASSED [ 21%]
+tests/test_payment_routes.py::TestInitializePayment::test_initialize_returns_reference PASSED [ 23%]
+tests/test_payment_routes.py::TestInitializePayment::test_initialize_missing_email_422 PASSED [ 25%]
+tests/test_payment_routes.py::TestInitializePayment::test_initialize_missing_amount_422 PASSED [ 27%]
+tests/test_payment_routes.py::TestInitializePayment::test_initialize_paystack_error_returns_502 PASSED [ 29%]
+tests/test_payment_routes.py::TestWebhookSecurity::test_webhook_without_signature_returns_401 PASSED [ 30%]
+tests/test_payment_routes.py::TestWebhookSecurity::test_webhook_with_wrong_signature_returns_401 PASSED [ 32%]
+tests/test_payment_routes.py::TestWebhookSecurity::test_webhook_with_correct_signature_returns_200 PASSED [ 34%]
+tests/test_payment_routes.py::TestWebhookSecurity::test_tampered_body_with_original_signature_returns_401 PASSED [ 36%]
+tests/test_payment_routes.py::TestWebhookProcessing::test_charge_success_updates_payment_to_succeeded PASSED [ 38%]
+tests/test_payment_routes.py::TestWebhookProcessing::test_charge_failure_updates_payment_to_failed PASSED [ 40%]
+tests/test_payment_routes.py::TestWebhookProcessing::test_unknown_event_returns_200_and_is_ignored PASSED [ 41%]
+tests/test_payment_routes.py::TestWebhookProcessing::test_webhook_always_returns_200_even_on_internal_error PASSED [ 43%]
+tests/test_payment_routes.py::TestGetPaymentByOrder::test_returns_200_for_existing_payment PASSED [ 45%]
+tests/test_payment_routes.py::TestGetPaymentByOrder::test_returns_404_for_missing_order PASSED [ 47%]
+tests/test_payment_routes.py::test_health_check PASSED                   [ 49%]
+tests/test_payment_service.py::TestPaymentServiceInitialize::test_creates_pending_payment_record PASSED [ 50%]
+tests/test_payment_service.py::TestPaymentServiceInitialize::test_stores_paystack_reference PASSED [ 52%]
+tests/test_payment_service.py::TestPaymentServiceInitialize::test_stores_authorization_url PASSED [ 54%]
+tests/test_payment_service.py::TestPaymentServiceInitialize::test_raises_paystack_error_on_api_failure PASSED [ 56%]
+tests/test_payment_service.py::TestPaymentServiceInitialize::test_does_not_persist_on_paystack_failure PASSED [ 58%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_updates_payment_status_to_succeeded PASSED [ 60%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_re_verifies_with_paystack_api PASSED [ 61%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_calls_order_service_with_paid_status PASSED [ 63%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_publishes_payment_succeeded_event PASSED [ 65%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_does_not_update_if_verification_returns_non_success PASSED [ 67%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_does_not_update_if_verification_raises PASSED [ 69%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_ignores_unknown_reference PASSED [ 70%]
+tests/test_payment_service.py::TestHandleWebhookSuccess::test_ignores_missing_reference PASSED [ 72%]
+tests/test_payment_service.py::TestHandleWebhookFailure::test_updates_payment_status_to_failed PASSED [ 74%]
+tests/test_payment_service.py::TestHandleWebhookFailure::test_calls_order_service_with_cancelled_status PASSED [ 76%]
+tests/test_payment_service.py::TestHandleWebhookFailure::test_publishes_payment_failed_event PASSED [ 78%]
+tests/test_payment_service.py::TestHandleWebhookFailure::test_does_not_call_verify_on_failure PASSED [ 80%]
+tests/test_payment_service.py::TestHandleWebhookUnhandledEvents::test_ignores_unknown_event_types PASSED [ 81%]
+tests/test_payment_service.py::TestGetPaymentByOrder::test_returns_payment_for_existing_order PASSED [ 83%]
+tests/test_payment_service.py::TestGetPaymentByOrder::test_returns_none_for_unknown_order PASSED [ 85%]
+tests/test_webhook_security.py::TestVerifyWebhookSignature::test_valid_signature_returns_true PASSED [ 87%]
+tests/test_webhook_security.py::TestVerifyWebhookSignature::test_wrong_signature_returns_false PASSED [ 89%]
+tests/test_webhook_security.py::TestVerifyWebhookSignature::test_tampered_body_returns_false PASSED [ 90%]
+tests/test_webhook_security.py::TestVerifyWebhookSignature::test_empty_body_with_correct_signature_returns_true PASSED [ 92%]
+tests/test_webhook_security.py::TestVerifyWebhookSignature::test_empty_signature_returns_false PASSED [ 94%]
+tests/test_webhook_security.py::TestVerifyWebhookSignature::test_signature_from_different_secret_returns_false PASSED [ 96%]
+tests/test_webhook_security.py::TestVerifyWebhookSignature::test_is_constant_time_comparison PASSED [ 98%]
 tests/test_webhook_security.py::TestVerifyWebhookSignature::test_whitespace_change_in_body_invalidates_signature PASSED [100%]
 =============================== warnings summary ===============================
   /app/app/schemas/payment_schema.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
   /app/app/schemas/payment_schema.py:35: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 45 passed, 2 warnings in 1.34s ========================
-[0;32m✔ PASS[0m — payment-service tests: ======================== 45 passed, 2 warnings in 1.34s ========================
+======================== 55 passed, 2 warnings in 3.50s ========================
+[0;32m✔ PASS[0m — payment-service tests: ======================== 55 passed, 2 warnings in 3.50s ========================
+
+  [1;33m▷ Running tests for shipping-service...[0m
+tests/test_shipment_routes.py::TestCreateShipment::test_create_returns_201 PASSED [  2%]
+tests/test_shipment_routes.py::TestCreateShipment::test_create_returns_pending_status PASSED [  4%]
+tests/test_shipment_routes.py::TestCreateShipment::test_create_stores_all_fields PASSED [  6%]
+tests/test_shipment_routes.py::TestCreateShipment::test_create_missing_delivery_address_422 PASSED [  8%]
+tests/test_shipment_routes.py::TestCreateShipment::test_create_missing_order_id_422 PASSED [ 10%]
+tests/test_shipment_routes.py::TestCreateShipment::test_duplicate_order_returns_409 PASSED [ 13%]
+tests/test_shipment_routes.py::TestDispatchShipment::test_dispatch_returns_200 PASSED [ 15%]
+tests/test_shipment_routes.py::TestDispatchShipment::test_dispatch_changes_status_to_dispatched PASSED [ 17%]
+tests/test_shipment_routes.py::TestDispatchShipment::test_dispatch_sets_dispatched_at PASSED [ 19%]
+tests/test_shipment_routes.py::TestDispatchShipment::test_dispatch_nonexistent_shipment_409 PASSED [ 21%]
+tests/test_shipment_routes.py::TestDispatchShipment::test_dispatch_twice_returns_409 PASSED [ 23%]
+tests/test_shipment_routes.py::TestDispatchShipment::test_dispatch_invalid_uuid_422 PASSED [ 26%]
+tests/test_shipment_routes.py::TestDeliverShipment::test_deliver_returns_200 PASSED [ 28%]
+tests/test_shipment_routes.py::TestDeliverShipment::test_deliver_changes_status_to_delivered PASSED [ 30%]
+tests/test_shipment_routes.py::TestDeliverShipment::test_deliver_sets_delivered_at PASSED [ 32%]
+tests/test_shipment_routes.py::TestDeliverShipment::test_deliver_pending_shipment_returns_409 PASSED [ 34%]
+tests/test_shipment_routes.py::TestDeliverShipment::test_deliver_nonexistent_shipment_409 PASSED [ 36%]
+tests/test_shipment_routes.py::TestDeliverShipment::test_deliver_twice_returns_409 PASSED [ 39%]
+tests/test_shipment_routes.py::TestGetShipment::test_staff_can_get_shipment_by_id PASSED [ 41%]
+tests/test_shipment_routes.py::TestGetShipment::test_nonexistent_shipment_returns_404 PASSED [ 43%]
+tests/test_shipment_routes.py::TestGetShipment::test_invalid_uuid_returns_422 PASSED [ 45%]
+tests/test_shipment_routes.py::TestGetShipmentByOrder::test_customer_can_track_own_shipment PASSED [ 47%]
+tests/test_shipment_routes.py::TestGetShipmentByOrder::test_returns_404_when_no_shipment_for_order PASSED [ 50%]
+tests/test_shipment_routes.py::TestGetShipmentByOrder::test_customer_cannot_view_other_users_shipment PASSED [ 52%]
+tests/test_shipment_routes.py::test_health_check PASSED                  [ 54%]
+tests/test_shipment_service.py::TestShipmentServiceCreate::test_creates_shipment_with_pending_status PASSED [ 56%]
+tests/test_shipment_service.py::TestShipmentServiceCreate::test_stores_all_fields PASSED [ 58%]
+tests/test_shipment_service.py::TestShipmentServiceCreate::test_duplicate_order_raises_shipment_error PASSED [ 60%]
+tests/test_shipment_service.py::TestShipmentServiceCreate::test_different_orders_create_separate_shipments PASSED [ 63%]
+tests/test_shipment_service.py::TestShipmentServiceDispatch::test_dispatch_updates_status_to_dispatched PASSED [ 65%]
+tests/test_shipment_service.py::TestShipmentServiceDispatch::test_dispatch_sets_dispatched_at_timestamp PASSED [ 67%]
+tests/test_shipment_service.py::TestShipmentServiceDispatch::test_dispatch_updates_driver_info PASSED [ 69%]
+tests/test_shipment_service.py::TestShipmentServiceDispatch::test_dispatch_publishes_event PASSED [ 71%]
+tests/test_shipment_service.py::TestShipmentServiceDispatch::test_dispatch_nonexistent_shipment_raises_error PASSED [ 73%]
+tests/test_shipment_service.py::TestShipmentServiceDispatch::test_cannot_dispatch_already_dispatched_shipment PASSED [ 76%]
+tests/test_shipment_service.py::TestShipmentServiceDispatch::test_cannot_dispatch_delivered_shipment PASSED [ 78%]
+tests/test_shipment_service.py::TestShipmentServiceDeliver::test_deliver_updates_status_to_delivered PASSED [ 80%]
+tests/test_shipment_service.py::TestShipmentServiceDeliver::test_deliver_sets_delivered_at_timestamp PASSED [ 82%]
+tests/test_shipment_service.py::TestShipmentServiceDeliver::test_deliver_publishes_event PASSED [ 84%]
+tests/test_shipment_service.py::TestShipmentServiceDeliver::test_cannot_deliver_pending_shipment PASSED [ 86%]
+tests/test_shipment_service.py::TestShipmentServiceDeliver::test_deliver_nonexistent_shipment_raises_error PASSED [ 89%]
+tests/test_shipment_service.py::TestShipmentServiceDeliver::test_cannot_deliver_twice PASSED [ 91%]
+tests/test_shipment_service.py::TestShipmentServiceGet::test_get_by_order_returns_shipment PASSED [ 93%]
+tests/test_shipment_service.py::TestShipmentServiceGet::test_get_by_order_returns_none_for_unknown_order PASSED [ 95%]
+tests/test_shipment_service.py::TestShipmentServiceGet::test_get_by_id_returns_shipment PASSED [ 97%]
+tests/test_shipment_service.py::TestShipmentServiceGet::test_get_by_id_returns_none_for_unknown_id PASSED [100%]
+=============================== warnings summary ===============================
+tests/test_shipment_routes.py: 8 warnings
+tests/test_shipment_service.py: 10 warnings
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 46 passed, 27 warnings in 3.12s ========================
+[0;32m✔ PASS[0m — shipping-service tests: ======================= 46 passed, 27 warnings in 3.12s ========================
 
 [0;34m[1m▶ Phase 0 — Health Checks[0m
 [0;32m✔ PASS[0m — auth-service is up
 [0;32m✔ PASS[0m — user-service is up
 [0;32m✔ PASS[0m — product-service is up
 [0;32m✔ PASS[0m — order-service is up
+[0;32m✔ PASS[0m — payment-service is up
+[0;32m✔ PASS[0m — shipping-service is up
 
 [0;34m[1m▶ Phase 1 — User Registration (auth-service)[0m
   [1;33mCleaning up any previous e2e test users with this email (allows clean re-runs)[0m
-  [1;33mRegistering test user: e2e_user_1782816767[0m
+  [1;33mRegistering test user: e2e_user_1786887960[0m
 [0;32m✔ PASS[0m — User registered — verification email sent to uchejudennodim@gmail.com
   [1;33mAttempting login before email verification (should be blocked)[0m
 [0;32m✔ PASS[0m — Unverified login correctly blocked: "Please verify your email before logging in"
@@ -349,7 +417,7 @@ tests/test_webhook_security.py::TestVerifyWebhookSignature::test_whitespace_chan
 
 [0;34m[1m▶ Phase 2 — User Login (auth-service)[0m
 [0;32m✔ PASS[0m — Login successful — access token received
-  [1;33muser_id from JWT: 019f1829-951c-76e4-888a-dd7efca49c5b[0m
+  [1;33muser_id from JWT: 01a00ad3-6b82-7a8d-973b-e74672217be0[0m
   [1;33mTesting token refresh[0m
 [0;32m✔ PASS[0m — Token refresh working
 
@@ -378,7 +446,7 @@ tests/test_webhook_security.py::TestVerifyWebhookSignature::test_whitespace_chan
 
 [0;34m[1m▶ Phase 6 — Cart Management (order-service)[0m
   [1;33mCreating/fetching cart for test user[0m
-[0;32m✔ PASS[0m — Cart created: 019f1829-beb8-7ab5-ade0-ef55bbb44d07
+[0;32m✔ PASS[0m — Cart created: 01a00ad3-9c4c-7fe1-80e9-97039111eb06
   [1;33mAdding Margherita (small) × 2 to cart[0m
 [0;32m✔ PASS[0m — Item added to cart
   [1;33mVerifying cart has the item in DB (product-service will confirm price at checkout)[0m
@@ -386,16 +454,14 @@ tests/test_webhook_security.py::TestVerifyWebhookSignature::test_whitespace_chan
 
 [0;34m[1m▶ Phase 7 — Checkout[0m
   [1;33mChecking out — order-service will verify prices against product-service[0m
-[0;32m✔ PASS[0m — Order created with pending_payment status: 019f1829-bf7f-7a90-9b57-bebf79194cf8
+[0;32m✔ PASS[0m — Order created with pending_payment status: 01a00ad3-9e4b-763f-9c26-c7cc835234f8
   [1;33mTotal: $17.98 | Items: 1 | Price changes: 0[0m
-  [1;33mPaystack authorization URL: https://checkout.paystack.com/97tb50fupkejvhm[0m
-  [1;33mPayment reference: PIZZA-BED45BF55A8D48AD[0m
+  [1;33mPaystack authorization URL: https://checkout.paystack.com/3ljmm1u7ttpw24f[0m
+  [1;33mPayment reference: PIZZA-187176762EDB4F10[0m
 
 [0;34m[1m▶ Phase 7b — Payment Simulation (signed webhook injection)[0m
   [1;33mComputing HMAC-SHA512 signature for webhook payload...[0m
 [0;32m✔ PASS[0m — Webhook signature computed
   [1;33mMocking Paystack verify_transaction response and posting webhook...[0m
-[0;32m✔ PASS[0m — Webhook accepted by payment-service (200 OK)
-  [1;33mWaiting 3s for payment processing and order status update...[0m
-[0;31m✗ FAIL[0m — Payment record status should be 'succeeded', got 'pending'
+[0;31m✗ FAIL[0m — Webhook POST returned 401, expected 200
 [0;31mAborting test run.[0m
