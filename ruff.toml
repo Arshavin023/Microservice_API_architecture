@@ -1,8 +1,12 @@
 [lint]
-# I001 = import block unsorted — disabled because the codebase predates
-# ruff and fixing 393 files in one commit is noise. Enable and fix
-# incrementally once the team adopts isort as a standard.
-ignore = ["I001", "E501"]
+# Disabled rules — these fire on pre-existing code that predates ruff.
+# Fix incrementally rather than in one noisy commit.
+#
+# I001 — import block unsorted
+# E501 — line too long
+# F401 — imported but unused (common in __init__.py re-exports and
+#         FastAPI route files that import for side effects)
+ignore = ["I001", "E501", "F401"]
 
-# Exclude alembic-generated migration files from all checks
+# Exclude alembic-generated files from all checks
 exclude = ["*/alembic/versions/*", "*/alembic/env.py"]

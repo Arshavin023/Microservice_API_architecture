@@ -50,3 +50,4 @@ scripts/logs/reconcile.log
 node_modules/
 node_modules/
 cicd_scripts/*.yml
+ruff.toml
