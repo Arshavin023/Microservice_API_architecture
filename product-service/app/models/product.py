@@ -13,7 +13,7 @@ class Product(Base):
 
     name = Column(String(150), nullable=False)
     description = Column(String(500), nullable=True)
-
+    image_url = Column(String(255), nullable=True)
     # Product-level availability — e.g. taken off the menu entirely,
     # distinct from a single size being temporarily unavailable
     # (that's tracked per-variant, see ProductVariant.is_available).

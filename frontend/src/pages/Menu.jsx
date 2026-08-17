@@ -4,7 +4,45 @@ import { ShoppingBag, Loader2, Star, Clock, ChevronRight } from 'lucide-react'
 import { productsApi, ordersApi } from '../api'
 import { useAuth } from '../context/AuthContext'
 
-const PIZZA_EMOJI = { classic: '🍕', vegetarian: '🥦', meat: '🥩', special: '⭐' }
+// Category emoji map
+const CATEGORY_EMOJI = {
+  'rice dishes':   '🍚',
+  'soups':         '🍲',
+  'swallow':       '🫓',
+  'sides & extras':'🌯',
+  'proteins':      '🍖',
+}
+
+// Per-product emoji map
+const PRODUCT_EMOJI = {
+  'party jollof rice':     '🍚',
+  'fried rice':            '🍛',
+  'egusi soup':            '🍲',
+  'vegetable soup':        '🥬',
+  'afang soup':            '🌿',
+  'ogbono soup':           '🍵',
+  'bitterleaf soup':       '🍃',
+  'eba':                   '🫓',
+  'fufu':                  '🫙',
+  'semo':                  '🥣',
+  'wheat flour meal':      '🌾',
+  'moi moi':               '🟤',
+  'beans and plantain':    '🫘',
+  'fried plantain (dodo)': '🍌',
+  'beef':                  '🥩',
+  'chicken':               '🍗',
+  'turkey':                '🦃',
+  'fish':                  '🐟',
+  'goat meat':             '🐐',
+}
+
+function getProductEmoji(name) {
+  return PRODUCT_EMOJI[name?.toLowerCase()] ?? '🍽️'
+}
+
+function getCategoryEmoji(name) {
+  return CATEGORY_EMOJI[name?.toLowerCase()] ?? '🍽️'
+}
 
 export default function Menu({ onCartUpdate }) {
   const { isAuthenticated } = useAuth()
@@ -72,13 +110,13 @@ export default function Menu({ onCartUpdate }) {
       <div className="bg-[#1A1A2E] text-white">
         <div className="max-w-6xl mx-auto px-4 py-14 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1">
-            <p className="text-[#FF6B35] font-semibold text-sm uppercase tracking-wider mb-3">Fresh from the oven</p>
+            <p className="text-[#FF6B35] font-semibold text-sm uppercase tracking-wider mb-3">Fresh Nigerian flavours</p>
             <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight mb-4">
-              Handcrafted pizzas,<br />
+              Authentic Nigerian food,<br />
               <span className="text-[#FF6B35]">delivered fast.</span>
             </h1>
             <p className="text-gray-400 mb-6 max-w-md">
-              Choose from our wood-fired selection. Order in seconds, track in real time.
+              From smoky jollof to rich egusi. Order in seconds, track in real time.
             </p>
             <div className="flex items-center gap-6 text-sm">
               <div className="flex items-center gap-1.5 text-gray-300">
@@ -91,7 +129,7 @@ export default function Menu({ onCartUpdate }) {
               </div>
             </div>
           </div>
-          <div className="text-8xl select-none hidden md:block">🍕</div>
+          <div className="text-8xl select-none hidden md:block">🍲</div>
         </div>
       </div>
 
@@ -102,7 +140,7 @@ export default function Menu({ onCartUpdate }) {
             onClick={() => filterByCategory(null)}
             className={`pill whitespace-nowrap flex-shrink-0 ${!selected ? 'pill-active' : 'pill-inactive'}`}
           >
-            🍕 All pizzas
+            🍽️ All items
           </button>
           {categories.map(cat => (
             <button
@@ -110,7 +148,7 @@ export default function Menu({ onCartUpdate }) {
               onClick={() => filterByCategory(cat.id)}
               className={`pill whitespace-nowrap flex-shrink-0 ${selected === cat.id ? 'pill-active' : 'pill-inactive'}`}
             >
-              {PIZZA_EMOJI[cat.name?.toLowerCase()] ?? '🍕'} {cat.name}
+              {getCategoryEmoji(cat.name)} {cat.name}
             </button>
           ))}
         </div>
@@ -118,7 +156,7 @@ export default function Menu({ onCartUpdate }) {
         {/* Section header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[#1A1A2E]">
-            {selected ? categories.find(c => c.id === selected)?.name : 'All pizzas'}
+            {selected ? categories.find(c => c.id === selected)?.name : 'All items'}
             <span className="text-gray-400 font-normal text-base ml-2">({products.length})</span>
           </h2>
         </div>
@@ -126,8 +164,8 @@ export default function Menu({ onCartUpdate }) {
         {/* Product grid */}
         {products.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
-            <span className="text-5xl">🍕</span>
-            <p className="mt-4 text-gray-500">No pizzas in this category yet.</p>
+            <span className="text-5xl">🍽️</span>
+            <p className="mt-4 text-gray-500">No items in this category yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -165,8 +203,18 @@ function ProductCard({ product, adding, onAdd }) {
   return (
     <div className="card overflow-hidden hover:shadow-card transition-shadow group">
       {/* Image placeholder with gradient */}
-      <div className="h-44 bg-gradient-to-br from-orange-50 to-amber-100 flex items-center justify-center relative">
-        <span className="text-7xl group-hover:scale-110 transition-transform duration-300">🍕</span>
+      <div className="h-52 bg-gradient-to-br from-orange-50 to-amber-100 flex items-center justify-center relative overflow-hidden">
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <span className="text-7xl group-hover:scale-110 transition-transform duration-300">
+            {getProductEmoji(product.name)}
+          </span>
+        )}
         {product.is_available === false && (
           <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
             <span className="text-sm font-semibold text-gray-500">Unavailable</span>
