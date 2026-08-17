@@ -179,6 +179,7 @@ services:
       - product-service
       - order-service
       - payment-service
+      - shipping-service
     ports:
       - "3000:80"
   payment-service:
@@ -199,6 +200,8 @@ services:
       ORDER_SERVICE_URL: http://order-service:8000
       PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
       PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY}
+      # ENVIRONMENT: testing
+      # MOCK_PAYSTACK: "true"
 
     extra_hosts:
       - "host.docker.internal:host-gateway"

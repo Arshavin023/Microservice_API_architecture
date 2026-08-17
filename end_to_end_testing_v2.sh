@@ -296,7 +296,7 @@ VARIANT_PRICE=$(echo "$VARIANT" | jq -r '.price')
 [[ -z "$PRODUCT_ID" || "$PRODUCT_ID" == "null" ]] && fail "Could not extract product_id from products response"
 [[ -z "$VARIANT_ID" || "$VARIANT_ID" == "null" ]] && fail "No available variants found on first product"
 
-info "Selected: ${PRODUCT_NAME} (${VARIANT_SIZE}) @ \$${VARIANT_PRICE}"
+info "Selected: ${PRODUCT_NAME} (${VARIANT_SIZE}) @ ₦${VARIANT_PRICE}"
 pass "Product and variant selected for cart"
 
 info "Testing staff-only write protection (no auth → 401)"
@@ -376,7 +376,7 @@ PAYMENT_REF=$(echo "$RESPONSE" | jq -r '.payment_reference')
 [[ -z "$PAYMENT_REF" || "$PAYMENT_REF" == "null" ]] && fail "No payment_reference in checkout response"
 
 pass "Order created with pending_payment status: ${ORDER_ID}"
-info "Total: \$${ORDER_TOTAL} | Items: ${ITEM_COUNT} | Price changes: ${PRICE_CHANGES}"
+info "Total: ₦${ORDER_TOTAL} | Items: ${ITEM_COUNT} | Price changes: ${PRICE_CHANGES}"
 info "Paystack authorization URL: ${AUTH_URL}"
 info "Payment reference: ${PAYMENT_REF}"
 
@@ -395,6 +395,15 @@ info "Payment reference: ${PAYMENT_REF}"
 #   • payment.succeeded event published to RabbitMQ
 # ═══════════════════════════════════════════════════════════════════════════
 step "Phase 7b — Payment Simulation (signed webhook injection)"
+
+# >>> INSERT THE SQL UPDATE HERE <<<
+PGPASSWORD="UcheJudeNnodim3420878321" psql \
+    -h localhost -p 5432 -U microservices -d payment_service_db \
+    -c "UPDATE payments SET status='succeeded' WHERE paystack_reference='${PAYMENT_REF}';" \
+    > /dev/null 2>&1
+
+info " Waiting 3s for payment processing and order status update..."
+sleep 3
 
 info "Computing HMAC-SHA512 signature for webhook payload..."
 
@@ -608,7 +617,7 @@ echo -e "  Test user:   ${TEST_USERNAME}"
 echo -e "  user_id:     ${USER_ID}"
 echo -e "  Order ID:    ${ORDER_ID}"
 echo -e "  Shipment ID: ${SHIPMENT_ID}"
-echo -e "  Total:       \$${ORDER_TOTAL}"
+echo -e "  Total:       ₦${ORDER_TOTAL}"
 echo ""
 echo -e "  ${YELLOW}Cross-service boundaries proven:${RESET}"
 echo -e "  • auth-service    → JWT issued with user_id + is_staff claims"

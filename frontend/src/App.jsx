@@ -9,6 +9,7 @@ import Register from './pages/Register'
 import Cart from './pages/Cart'
 import { Orders, OrderDetail } from './pages/Orders'
 import Profile from './pages/Profile'
+import StaffDashboard from './pages/StaffDashboard'
 import { ordersApi } from './api'
 import { useAuth } from './context/AuthContext'
 
@@ -29,25 +30,18 @@ function AppShell() {
   useEffect(() => { refreshCartCount() }, [refreshCartCount])
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#FFF8F0]">
       <Navbar cartCount={cartCount} />
       <Routes>
-        <Route path="/" element={<Menu onCartUpdate={refreshCartCount} />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/cart" element={
-          <ProtectedRoute><Cart onCartUpdate={refreshCartCount} /></ProtectedRoute>
-        } />
-        <Route path="/orders" element={
-          <ProtectedRoute><Orders /></ProtectedRoute>
-        } />
-        <Route path="/orders/:id" element={
-          <ProtectedRoute><OrderDetail /></ProtectedRoute>
-        } />
-        <Route path="/profile" element={
-          <ProtectedRoute><Profile /></ProtectedRoute>
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/"          element={<Menu onCartUpdate={refreshCartCount} />} />
+        <Route path="/login"     element={<Login />} />
+        <Route path="/register"  element={<Register />} />
+        <Route path="/cart"      element={<ProtectedRoute><Cart onCartUpdate={refreshCartCount} /></ProtectedRoute>} />
+        <Route path="/orders"    element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+        <Route path="/profile"   element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/staff"     element={<ProtectedRoute><StaffDashboard /></ProtectedRoute>} />
+        <Route path="*"          element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   )

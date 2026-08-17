@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, ShoppingCart, Loader2, ExternalLink } from 'lucide-react'
+import { Trash2, ShoppingBag, Loader2, ExternalLink, ArrowRight } from 'lucide-react'
 import { ordersApi } from '../api'
 
 export default function Cart({ onCartUpdate }) {
   const navigate = useNavigate()
-  const [cart, setCart] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [removing, setRemoving] = useState({})
-  const [checkingOut, setCheckingOut] = useState(false)
+  const [cart,           setCart]           = useState(null)
+  const [loading,        setLoading]        = useState(true)
+  const [removing,       setRemoving]       = useState({})
+  const [checkingOut,    setCheckingOut]    = useState(false)
   const [checkoutResult, setCheckoutResult] = useState(null)
-  const [error, setError] = useState('')
+  const [error,          setError]          = useState('')
 
   const fetchCart = async () => {
     try {
@@ -45,7 +45,6 @@ export default function Cart({ onCartUpdate }) {
       const res = await ordersApi.checkout()
       setCheckoutResult(res.data)
       onCartUpdate?.()
-      // Open Paystack in a new tab so the user can complete payment
       if (res.data.authorization_url) {
         window.open(res.data.authorization_url, '_blank')
       }
@@ -59,72 +58,81 @@ export default function Cart({ onCartUpdate }) {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+      <Loader2 className="w-8 h-8 animate-spin text-[#FF6B35]" />
     </div>
   )
 
   const items = cart?.items ?? []
-  const total = items.reduce((sum, item) => sum + parseFloat(item.subtotal), 0)
+  const total = items.reduce((sum, item) => sum + parseFloat(item.subtotal ?? 0), 0)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-8">Your cart</h1>
+      <h1 className="text-3xl font-bold text-[#1A1A2E] mb-2">Your cart</h1>
+      <p className="text-gray-500 mb-8">{items.length} item{items.length !== 1 ? 's' : ''}</p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm mb-5">
           {error}
         </div>
       )}
 
-      {/* Checkout result */}
+      {/* Post-checkout state */}
       {checkoutResult && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
-          <h2 className="font-semibold text-green-800 mb-1">Order placed!</h2>
-          <p className="text-sm text-green-700">
-            Order ID: <code className="font-mono text-xs">{checkoutResult.id}</code>
-          </p>
-          <p className="text-sm text-green-700">Status: {checkoutResult.status}</p>
-          {checkoutResult.authorization_url && (
-            <a
-              href={checkoutResult.authorization_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 mt-3 btn-primary text-sm"
-            >
-              Complete payment on Paystack
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-          <button
-            onClick={() => navigate('/orders')}
-            className="mt-2 ml-3 btn-secondary text-sm"
-          >
-            View orders
-          </button>
+        <div className="card p-6 bg-green-50 border-green-200 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">🎉</div>
+            <div className="flex-1">
+              <h2 className="font-bold text-green-800 mb-1">Order placed!</h2>
+              <p className="text-sm text-green-700 mb-3">
+                Order <code className="font-mono bg-green-100 px-1 rounded">{checkoutResult.id?.slice(0, 8)}…</code> is being processed.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {checkoutResult.authorization_url && (
+                  <a
+                    href={checkoutResult.authorization_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-primary text-sm flex items-center gap-1.5"
+                  >
+                    Pay on Paystack <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                <button onClick={() => navigate('/orders')} className="btn-secondary text-sm">
+                  View orders
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {items.length === 0 && !checkoutResult ? (
-        <div className="text-center py-20 text-gray-400">
-          <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-gray-500">Your cart is empty.</p>
-          <button onClick={() => navigate('/')} className="btn-primary mt-4">Browse menu</button>
+        <div className="text-center py-20">
+          <span className="text-6xl">🛒</span>
+          <p className="text-gray-500 mt-4 mb-6">Your cart is empty</p>
+          <button onClick={() => navigate('/')} className="btn-primary">
+            Browse menu
+          </button>
         </div>
-      ) : (
-        !checkoutResult && (
+      ) : !checkoutResult && (
+        <div className="space-y-4">
+          {/* Items */}
           <div className="card divide-y divide-gray-50">
             {items.map(item => (
               <div key={item.id} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="font-medium">{item.product_name}</p>
-                  <p className="text-sm text-gray-500 capitalize">{item.size} × {item.quantity}</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🍕</span>
+                  <div>
+                    <p className="font-semibold text-[#1A1A2E]">{item.product_name}</p>
+                    <p className="text-sm text-gray-500 capitalize">{item.size} × {item.quantity}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-medium">₦{parseFloat(item.subtotal).toFixed(2)}</span>
+                  <span className="font-bold text-[#1A1A2E]">₦{parseFloat(item.subtotal ?? 0).toFixed(2)}</span>
                   <button
                     onClick={() => removeItem(item.id)}
                     disabled={removing[item.id]}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    className="text-gray-300 hover:text-red-500 transition-colors p-1"
                   >
                     {removing[item.id]
                       ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -134,23 +142,38 @@ export default function Cart({ onCartUpdate }) {
                 </div>
               </div>
             ))}
-
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total</p>
-                <p className="text-xl font-bold">₦{total.toFixed(2)}</p>
-              </div>
-              <button
-                onClick={checkout}
-                disabled={checkingOut || items.length === 0}
-                className="btn-primary flex items-center gap-2"
-              >
-                {checkingOut && <Loader2 className="w-4 h-4 animate-spin" />}
-                Checkout
-              </button>
-            </div>
           </div>
-        )
+
+          {/* Summary */}
+          <div className="card p-5">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-gray-500 text-sm">Subtotal</span>
+              <span className="font-semibold">₦{total.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center mb-5">
+              <span className="text-gray-500 text-sm">Delivery</span>
+              <span className="text-green-600 text-sm font-medium">Free</span>
+            </div>
+            <div className="flex justify-between items-center mb-5 pt-3 border-t border-gray-100">
+              <span className="font-bold text-[#1A1A2E]">Total</span>
+              <span className="text-2xl font-bold text-[#FF6B35]">₦{total.toFixed(2)}</span>
+            </div>
+            <button
+              onClick={checkout}
+              disabled={checkingOut || items.length === 0}
+              className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+            >
+              {checkingOut
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <ArrowRight className="w-4 h-4" />
+              }
+              {checkingOut ? 'Processing…' : 'Place order'}
+            </button>
+            <p className="text-xs text-gray-400 text-center mt-3">
+              You'll be redirected to Paystack to complete payment
+            </p>
+          </div>
+        </div>
       )}
     </div>
   )

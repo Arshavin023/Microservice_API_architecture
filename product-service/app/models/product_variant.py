@@ -10,6 +10,10 @@ class SizeEnum(str, enum.Enum):
     small = "small"
     medium = "medium"
     large = "large"
+    portion = "portion"
+    regular = "regular"
+    half = "half"
+    full = "full"
 
 
 class ProductVariant(Base):

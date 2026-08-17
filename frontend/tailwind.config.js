@@ -4,16 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50:  "#fff7ed",
-          100: "#ffedd5",
-          500: "#f97316",
-          600: "#ea580c",
-          700: "#c2410c",
-        },
+        brand:   { DEFAULT: '#FF6B35', dark: '#e55a24' },
+        dark:    { DEFAULT: '#1A1A2E' },
+        cream:   { DEFAULT: '#FFF8F0' },
+        success: { DEFAULT: '#2D6A4F' },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans:    ["'DM Sans'", "system-ui", "sans-serif"],
+        display: ["'Playfair Display'", "serif"],
+      },
+      boxShadow: {
+        'card':  '0 2px 12px rgba(26,26,46,0.06)',
+        'float': '0 8px 32px rgba(26,26,46,0.15)',
       },
     },
   },

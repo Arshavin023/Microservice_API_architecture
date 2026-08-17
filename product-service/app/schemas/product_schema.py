@@ -10,18 +10,24 @@ class SizeEnum(str, Enum):
     small = "small"
     medium = "medium"
     large = "large"
+    portion = "portion"
+    regular = "regular"
+    half = "half"
+    full = "full"
 
 
 # ---- Category ----
 
 class CategoryCreate(BaseModel):
     name: str
+    description: Optional[str] = None
     display_order: int = 0
     is_active: bool = True
 
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
     display_order: Optional[int] = None
     is_active: Optional[bool] = None
 
@@ -29,6 +35,7 @@ class CategoryUpdate(BaseModel):
 class CategoryResponse(BaseModel):
     id: UUID
     name: str
+    description: Optional[str] = None
     display_order: int
     is_active: bool
 
