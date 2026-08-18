@@ -4,7 +4,9 @@ from fastapi_jwt_auth2.exceptions import AuthJWTException
 
 from app.api.category_routes import router as category_router
 from app.api.product_routes import router as product_router
-from app.core import jwt_config  # noqa: F401 — triggers @AuthJWT.load_config registration
+from app.core import (
+    jwt_config,
+)  # noqa: F401 — triggers @AuthJWT.load_config registration
 
 app = FastAPI(title="Product Service")
 app.include_router(category_router)

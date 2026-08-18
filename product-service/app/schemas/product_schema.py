@@ -116,6 +116,7 @@ class SizeEnum(str, Enum):
 
 # ---- Category ----
 
+
 class CategoryCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -143,6 +144,7 @@ class CategoryResponse(BaseModel):
 
 # ---- Product Variant ----
 
+
 class ProductVariantCreate(BaseModel):
     size: SizeEnum
     price: Decimal = Field(gt=0, decimal_places=2)
@@ -165,6 +167,7 @@ class ProductVariantResponse(BaseModel):
 
 
 # ---- Product ----
+
 
 class ProductCreate(BaseModel):
     category_id: UUID

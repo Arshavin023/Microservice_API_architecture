@@ -51,7 +51,9 @@ class ProductService:
         return await ProductService.get_product(db, str(product.id))
 
     @staticmethod
-    async def update_product(db: AsyncSession, product: Product, updates: dict) -> Product:
+    async def update_product(
+        db: AsyncSession, product: Product, updates: dict
+    ) -> Product:
         for field, value in updates.items():
             setattr(product, field, value)
         await db.commit()

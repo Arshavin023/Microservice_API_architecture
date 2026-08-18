@@ -27,7 +27,9 @@ class CategoryService:
         return category
 
     @staticmethod
-    async def update_category(db: AsyncSession, category: Category, updates: dict) -> Category:
+    async def update_category(
+        db: AsyncSession, category: Category, updates: dict
+    ) -> Category:
         for field, value in updates.items():
             setattr(category, field, value)
         await db.commit()

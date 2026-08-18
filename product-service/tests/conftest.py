@@ -13,9 +13,13 @@ os.environ["JWT_SECRET"] = "test-secret-key-for-ci"
 # We replace bind_processor with one that safely handles both UUID objects and strings.
 from sqlalchemy.sql.sqltypes import Uuid as _SA_Uuid
 
+
 def _safe_bind_processor(self, dialect):
-    character_based = not getattr(dialect, "supports_native_uuid", True) or not self.native_uuid
+    character_based = (
+        not getattr(dialect, "supports_native_uuid", True) or not self.native_uuid
+    )
     if character_based and self.as_uuid:
+
         def process(value):
             if value is None:
                 return None
@@ -23,23 +27,30 @@ def _safe_bind_processor(self, dialect):
                 return value.hex
             # already a string (e.g. returned from SQLite) — strip dashes
             return str(value).replace("-", "")
+
         return process
     # Fall back to original logic for everything else
     return None
+
 
 _SA_Uuid.bind_processor = _safe_bind_processor
 
 # Also patch SizeEnum (postgresql.ENUM) bind for SQLite
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 
-_orig_enum_create = PG_ENUM.create.__func__ if hasattr(PG_ENUM.create, '__func__') else None
+_orig_enum_create = (
+    PG_ENUM.create.__func__ if hasattr(PG_ENUM.create, "__func__") else None
+)
+
 
 # Prevent postgresql ENUM from trying to CREATE TYPE on SQLite
 def _noop_create(self, bind=None, checkfirst=False):
     pass
 
+
 def _noop_drop(self, bind=None, checkfirst=False):
     pass
+
 
 PG_ENUM.create = _noop_create
 PG_ENUM.drop = _noop_drop
@@ -59,6 +70,7 @@ _test_engine = create_async_engine(
 )
 
 import app.db.session as _session_module
+
 _session_module.engine = _test_engine
 _session_module.AsyncSessionLocal = sessionmaker(
     bind=_test_engine,
@@ -114,23 +126,29 @@ def _decode(token) -> str:
 def make_staff_token() -> str:
     from fastapi_jwt_auth2 import AuthJWT
     from datetime import timedelta
+
     auth = AuthJWT()
-    return _decode(auth.create_access_token(
-        subject="staffuser",
-        expires_time=timedelta(hours=1),
-        user_claims={"is_staff": True},
-    ))
+    return _decode(
+        auth.create_access_token(
+            subject="staffuser",
+            expires_time=timedelta(hours=1),
+            user_claims={"is_staff": True},
+        )
+    )
 
 
 def make_user_token() -> str:
     from fastapi_jwt_auth2 import AuthJWT
     from datetime import timedelta
+
     auth = AuthJWT()
-    return _decode(auth.create_access_token(
-        subject="regularuser",
-        expires_time=timedelta(hours=1),
-        user_claims={"is_staff": False},
-    ))
+    return _decode(
+        auth.create_access_token(
+            subject="regularuser",
+            expires_time=timedelta(hours=1),
+            user_claims={"is_staff": False},
+        )
+    )
 
 
 async def create_category(client, name="Pizzas", display_order=1):

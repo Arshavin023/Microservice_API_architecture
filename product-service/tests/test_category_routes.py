@@ -1,6 +1,7 @@
 """
 Tests for /categories routes.
 """
+
 import pytest
 from conftest import make_staff_token, make_user_token, create_category
 
@@ -53,6 +54,7 @@ class TestGetCategory:
 
     async def test_get_nonexistent_category_404(self, client):
         import uuid
+
         resp = await client.get(f"{CATEGORIES_URL}/{uuid.uuid4()}")
         assert resp.status_code == 404
 
@@ -122,11 +124,12 @@ class TestUpdateCategory:
         )
         resp = await client.get(f"{CATEGORIES_URL}/{cat['id']}")
         data = resp.json()
-        assert data["display_order"] == 5   # unchanged
+        assert data["display_order"] == 5  # unchanged
         assert data["is_active"] is False
 
     async def test_patch_nonexistent_404(self, client):
         import uuid
+
         token = make_staff_token()
         resp = await client.patch(
             f"{CATEGORIES_URL}/{uuid.uuid4()}",
@@ -170,6 +173,7 @@ class TestDeleteCategory:
 
     async def test_delete_nonexistent_404(self, client):
         import uuid
+
         token = make_staff_token()
         resp = await client.delete(
             f"{CATEGORIES_URL}/{uuid.uuid4()}",

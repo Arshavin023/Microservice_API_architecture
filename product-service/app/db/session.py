@@ -27,7 +27,6 @@
 #         yield session
 
 
-
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -43,22 +42,13 @@ engine_kwargs = {
 
 # 2. Append pooling parameters ONLY if we are connecting to a PostgreSQL instance
 if DATABASE_URL.startswith("postgresql"):
-    engine_kwargs.update({
-        "pool_size": 10,
-        "max_overflow": 20
-    })
+    engine_kwargs.update({"pool_size": 10, "max_overflow": 20})
 
 # 3. Unpack all appropriate arguments into the factory function
-engine = create_async_engine(
-    DATABASE_URL,
-    **engine_kwargs
-)
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
-AsyncSessionLocal = sessionmaker(
-    engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
-)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
 
 async def get_db():
     async with AsyncSessionLocal() as session:

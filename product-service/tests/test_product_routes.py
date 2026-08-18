@@ -1,6 +1,7 @@
 """
 Tests for /products routes (including variant handling).
 """
+
 import pytest
 from conftest import make_staff_token, make_user_token, create_category, create_product
 
@@ -81,6 +82,7 @@ class TestGetProduct:
 
     async def test_get_nonexistent_product_404(self, client):
         import uuid
+
         resp = await client.get(f"{PRODUCTS_URL}/{uuid.uuid4()}")
         assert resp.status_code == 404
 
@@ -151,7 +153,11 @@ class TestCreateProduct:
         token = make_staff_token()
         resp = await client.post(
             PRODUCTS_URL,
-            json={"category_id": cat["id"], "name": "No Variants", "is_available": True},
+            json={
+                "category_id": cat["id"],
+                "name": "No Variants",
+                "is_available": True,
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 422
@@ -186,6 +192,7 @@ class TestUpdateProduct:
 
     async def test_patch_nonexistent_404(self, client):
         import uuid
+
         token = make_staff_token()
         resp = await client.patch(
             f"{PRODUCTS_URL}/{uuid.uuid4()}",
@@ -245,6 +252,7 @@ class TestDeleteProduct:
 
     async def test_delete_nonexistent_404(self, client):
         import uuid
+
         token = make_staff_token()
         resp = await client.delete(
             f"{PRODUCTS_URL}/{uuid.uuid4()}",

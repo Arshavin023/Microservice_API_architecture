@@ -9,7 +9,9 @@ class Product(Base):
     __tablename__ = "products"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: uuid6.uuid7())
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False, index=True)
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False, index=True
+    )
 
     name = Column(String(150), nullable=False)
     description = Column(String(500), nullable=True)
@@ -23,4 +25,6 @@ class Product(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     category = relationship("Category", back_populates="products")
-    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
+    variants = relationship(
+        "ProductVariant", back_populates="product", cascade="all, delete-orphan"
+    )

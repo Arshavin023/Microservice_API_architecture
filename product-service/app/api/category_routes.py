@@ -32,18 +32,31 @@ async def get_category(category_id: str, db: AsyncSession = Depends(get_db)):
     return category
 
 
-@router.post("", response_model=CategoryResponse, status_code=201, dependencies=[Depends(require_staff)])
+@router.post(
+    "",
+    response_model=CategoryResponse,
+    status_code=201,
+    dependencies=[Depends(require_staff)],
+)
 async def create_category(data: CategoryCreate, db: AsyncSession = Depends(get_db)):
     return await CategoryService.create_category(db, data.model_dump())
 
 
-@router.patch("/{category_id}", response_model=CategoryResponse, dependencies=[Depends(require_staff)])
-async def update_category(category_id: str, updates: CategoryUpdate, db: AsyncSession = Depends(get_db)):
+@router.patch(
+    "/{category_id}",
+    response_model=CategoryResponse,
+    dependencies=[Depends(require_staff)],
+)
+async def update_category(
+    category_id: str, updates: CategoryUpdate, db: AsyncSession = Depends(get_db)
+):
     uid = _parse_uuid(category_id, "category_id")
     category = await CategoryService.get_category(db, uid)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    return await CategoryService.update_category(db, category, updates.model_dump(exclude_unset=True))
+    return await CategoryService.update_category(
+        db, category, updates.model_dump(exclude_unset=True)
+    )
 
 
 @router.delete("/{category_id}", status_code=204, dependencies=[Depends(require_staff)])

@@ -1,6 +1,7 @@
 """
 Direct service-layer tests for CategoryService and ProductService.
 """
+
 import uuid
 import pytest
 import pytest_asyncio
@@ -98,8 +99,16 @@ class TestProductService:
             "description": "Classic",
             "is_available": True,
             "variants": [
-                {"size": SizeEnum.small, "price": Decimal("8.99"), "is_available": True},
-                {"size": SizeEnum.large, "price": Decimal("14.99"), "is_available": True},
+                {
+                    "size": SizeEnum.small,
+                    "price": Decimal("8.99"),
+                    "is_available": True,
+                },
+                {
+                    "size": SizeEnum.large,
+                    "price": Decimal("14.99"),
+                    "is_available": True,
+                },
             ],
         }
 

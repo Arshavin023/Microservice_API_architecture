@@ -1,6 +1,15 @@
 import uuid6
 import enum
-from sqlalchemy import Column, Numeric, Boolean, DateTime, ForeignKey, Enum, func, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Numeric,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Enum,
+    func,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base import Base
@@ -25,7 +34,9 @@ class ProductVariant(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: uuid6.uuid7())
-    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False, index=True)
+    product_id = Column(
+        UUID(as_uuid=True), ForeignKey("products.id"), nullable=False, index=True
+    )
 
     size = Column(Enum(SizeEnum), nullable=False)
 

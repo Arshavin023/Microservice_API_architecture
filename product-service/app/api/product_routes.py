@@ -38,19 +38,32 @@ async def get_product(product_id: str, db: AsyncSession = Depends(get_db)):
     return product
 
 
-@router.post("", response_model=ProductResponse, status_code=201, dependencies=[Depends(require_staff)])
+@router.post(
+    "",
+    response_model=ProductResponse,
+    status_code=201,
+    dependencies=[Depends(require_staff)],
+)
 async def create_product(data: ProductCreate, db: AsyncSession = Depends(get_db)):
     payload = data.model_dump()
     return await ProductService.create_product(db, payload)
 
 
-@router.patch("/{product_id}", response_model=ProductResponse, dependencies=[Depends(require_staff)])
-async def update_product(product_id: str, updates: ProductUpdate, db: AsyncSession = Depends(get_db)):
+@router.patch(
+    "/{product_id}",
+    response_model=ProductResponse,
+    dependencies=[Depends(require_staff)],
+)
+async def update_product(
+    product_id: str, updates: ProductUpdate, db: AsyncSession = Depends(get_db)
+):
     uid = _parse_uuid(product_id, "product_id")
     product = await ProductService.get_product(db, uid)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    return await ProductService.update_product(db, product, updates.model_dump(exclude_unset=True))
+    return await ProductService.update_product(
+        db, product, updates.model_dump(exclude_unset=True)
+    )
 
 
 @router.delete("/{product_id}", status_code=204, dependencies=[Depends(require_staff)])
