@@ -3,7 +3,7 @@ import json
 import logging
 import asyncio
 import pika
-
+from typing import Any
 from app.db.session import SessionLocal as AsyncSessionLocal
 from app.services.user_service import UserProfileService
 
@@ -60,19 +60,20 @@ async def _process_message(body: bytes) -> bool:
 
 
 def _on_message(
-    channel, method_frame, properties, body, loop: asyncio.AbstractEventLoop
-):
+    channel: Any,
+    method_frame: Any,
+    properties: Any,
+    body: bytes,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     should_ack = loop.run_until_complete(_process_message(body))
 
     if should_ack:
         channel.basic_ack(delivery_tag=method_frame.delivery_tag)
     else:
-        # requeue=True: put it back for another attempt rather than
-        # discarding — appropriate for transient failures only.
         channel.basic_nack(delivery_tag=method_frame.delivery_tag, requeue=True)
 
-
-def main():
+def main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 

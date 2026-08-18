@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_jwt_auth2 import AuthJWT
 from uuid import UUID
-
+from typing import cast
 from app.schemas.user_schema import UserProfileResponse, UserProfileUpdate
 from app.services.user_service import UserProfileService
+from app.models.user import UserProfile
 from app.db.session import get_db
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -29,13 +30,12 @@ async def get_user_profile(
     user_id: str,
     db: AsyncSession = Depends(get_db),
     Authorize: AuthJWT = Depends(),
-):
+) -> UserProfile:
     Authorize.jwt_required()
     current_username = Authorize.get_jwt_subject()
+    if not current_username:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-    # Cast to UUID object — the service/SQLAlchemy layer needs a real
-    # UUID, not a string. PostgreSQL handles implicit conversion but
-    # SQLite (used in tests) does not, and explicit is always safer.
     try:
         uid = UUID(user_id)
     except ValueError:
@@ -45,7 +45,9 @@ async def get_user_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    _require_self_or_403(current_username, profile.username)
+    # _require_self_or_403(current_username, profile.username)
+    _require_self_or_403(current_username, cast(str, profile.username))
+
 
     return profile
 
@@ -56,9 +58,11 @@ async def update_user_profile(
     updates: UserProfileUpdate,
     db: AsyncSession = Depends(get_db),
     Authorize: AuthJWT = Depends(),
-):
+) -> UserProfile:
     Authorize.jwt_required()
     current_username = Authorize.get_jwt_subject()
+    if not current_username:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
     try:
         uid = UUID(user_id)
@@ -69,12 +73,9 @@ async def update_user_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    _require_self_or_403(current_username, profile.username)
+    # _require_self_or_403(current_username, profile.username)
+    _require_self_or_403(current_username, cast(str, profile.username))
 
-    # exclude_unset=True: only fields the client actually sent are
-    # included — a field omitted from the request body is left alone,
-    # not overwritten with None. This is what makes it a real PATCH.
     update_data = updates.model_dump(exclude_unset=True)
-
     updated_profile = await UserProfileService.update_profile(db, profile, update_data)
     return updated_profile

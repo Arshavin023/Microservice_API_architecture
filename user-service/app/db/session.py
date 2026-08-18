@@ -1,32 +1,5 @@
-# from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-# from sqlalchemy.orm import sessionmaker
-# import os
-
-# DATABASE_URL = os.getenv("DATABASE_URL")
-
-# if not DATABASE_URL:
-#     raise RuntimeError("DATABASE_URL is missing inside container")
-
-# engine = create_async_engine(
-#     DATABASE_URL,
-#     echo=False,
-#     pool_size=10,
-#     max_overflow=20,
-#     pool_pre_ping=True,
-#     pool_recycle=300
-# )
-
-# AsyncSessionLocal = sessionmaker(
-#     bind=engine,
-#     class_=AsyncSession,
-#     expire_on_commit=False
-# )
-
-# async def get_db():
-#     async with AsyncSessionLocal() as session:
-#         yield session
-
 import os
+from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -46,9 +19,9 @@ if DATABASE_URL.startswith("postgresql"):
 # 3. Unpack all appropriate arguments into the factory function
 engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
-SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False) # type: ignore[call-overload]
 
 
-async def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as session:
         yield session

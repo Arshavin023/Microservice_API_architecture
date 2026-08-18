@@ -1,4 +1,6 @@
 import logging
+# from sqlalchemy import UUID
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.future import select
@@ -11,18 +13,26 @@ class UserProfileService:
 
     @staticmethod
     async def get_profile_by_user_id(
-        db: AsyncSession, user_id: str
+        db: AsyncSession, user_id: UUID
     ) -> UserProfile | None:
         result = await db.execute(
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
         return result.scalar_one_or_none()
 
+    # async def get_profile_by_user_id(
+    #     db: AsyncSession, user_id: str
+    # ) -> UserProfile | None:
+    #     result = await db.execute(
+    #         select(UserProfile).where(UserProfile.user_id == user_id)
+    #     )
+    #     return result.scalar_one_or_none()
+
     @staticmethod
     async def update_profile(
         db: AsyncSession,
         profile: UserProfile,
-        updates: dict,
+        updates: dict[str, object],
     ) -> UserProfile:
         """
         Applies a partial update to an existing profile. Only fields
@@ -40,10 +50,10 @@ class UserProfileService:
     @staticmethod
     async def create_profile_from_event(
         db: AsyncSession,
-        user_id: str,
+        user_id: UUID,
         email: str,
         username: str,
-    ) -> bool:
+    ) -> bool: 
         """
         Creates a profile row for a newly registered user.
 
@@ -54,7 +64,7 @@ class UserProfileService:
         user without creating duplicate rows).
         """
         profile = UserProfile(
-            user_id=user_id,
+            user_id=user_id, # type: ignore[arg-type]
             email=email,
             username=username,
         )
