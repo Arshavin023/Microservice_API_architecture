@@ -5,11 +5,3 @@ ignore_missing_imports = true
 exclude = ["tests/", "migrations/", "alembic/"]
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 python_executable = "pizzasaleapi_venv/bin/python"
-
-[[tool.mypy.overrides]]
-module = "notification-service.*"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "shipping-service.*"
-disallow_untyped_defs = false
