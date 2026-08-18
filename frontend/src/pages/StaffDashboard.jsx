@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Truck, Package, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Truck, Package, CheckCircle, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { ordersApi, shippingApi } from '../api'
 import { useAuth } from '../context/AuthContext'
 
@@ -11,29 +11,10 @@ const SHIPMENT_STATUS_COLOR = {
 }
 
 function ShipmentCard({ order, shipment, onRefresh }) {
-  const [expanded, setExpanded]   = useState(false)
-  const [working,  setWorking]    = useState(false)
-  const [form,     setForm]       = useState({ driver_name: '', driver_phone: '', tracking_note: '' })
-  const [error,    setError]      = useState('')
-
-  const createShipment = async () => {
-    setWorking(true); setError('')
-    try {
-      await shippingApi.createShipment({
-        order_id:         order.id,
-        user_id:          order.user_id,
-        delivery_address: order.delivery_address ?? 'Address not provided',
-        driver_name:      form.driver_name  || undefined,
-        driver_phone:     form.driver_phone || undefined,
-        tracking_note:    form.tracking_note || undefined,
-      })
-      onRefresh()
-    } catch (err) {
-      setError(err.response?.data?.detail ?? 'Failed to create shipment')
-    } finally {
-      setWorking(false)
-    }
-  }
+  const [expanded, setExpanded] = useState(false)
+  const [working,  setWorking]  = useState(false)
+  const [form,     setForm]     = useState({ driver_name: '', driver_phone: '', tracking_note: '' })
+  const [error,    setError]    = useState('')
 
   const dispatch = async () => {
     setWorking(true); setError('')
@@ -72,7 +53,7 @@ function ShipmentCard({ order, shipment, onRefresh }) {
         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-3 text-left">
-          <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xl">🍕</div>
+          <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xl">🍽️</div>
           <div>
             <p className="font-semibold text-[#1A1A2E] text-sm">
               ₦{parseFloat(order.total_amount).toFixed(2)}
@@ -86,7 +67,9 @@ function ShipmentCard({ order, shipment, onRefresh }) {
               {shipment.status}
             </span>
           ) : (
-            <span className="badge bg-gray-100 text-gray-500">No shipment</span>
+            <span className="badge bg-amber-100 text-amber-600 flex items-center gap-1">
+              <Clock className="w-3 h-3" /> Awaiting shipment
+            </span>
           )}
           {expanded
             ? <ChevronUp className="w-4 h-4 text-gray-400" />
@@ -101,66 +84,71 @@ function ShipmentCard({ order, shipment, onRefresh }) {
             <div className="bg-red-50 text-red-700 text-sm p-3 rounded-lg">{error}</div>
           )}
 
-          {/* Form fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Driver name</label>
-              <input
-                className="input text-sm"
-                placeholder="Emeka Obi"
-                value={form.driver_name}
-                onChange={e => setForm(f => ({ ...f, driver_name: e.target.value }))}
-              />
+          {!shipment ? (
+            // Shipment not yet auto-created — payment event may still be processing
+            <div className="text-center py-4 text-gray-500 text-sm">
+              <Clock className="w-5 h-5 mx-auto mb-2 text-amber-400" />
+              Shipment is being created automatically.<br />
+              Refresh in a moment.
             </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Driver phone</label>
-              <input
-                className="input text-sm"
-                placeholder="+234..."
-                value={form.driver_phone}
-                onChange={e => setForm(f => ({ ...f, driver_phone: e.target.value }))}
-              />
+          ) : shipment.status === 'delivered' ? (
+            <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium py-2">
+              <CheckCircle className="w-4 h-4" /> Delivered ✓
             </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Note (optional)</label>
-            <input
-              className="input text-sm"
-              placeholder="Tracking note..."
-              value={form.tracking_note}
-              onChange={e => setForm(f => ({ ...f, tracking_note: e.target.value }))}
-            />
-          </div>
+          ) : (
+            <>
+              {/* Driver info — only relevant for dispatch */}
+              {shipment.status === 'pending' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Driver name</label>
+                    <input
+                      className="input text-sm"
+                      placeholder="Emeka Obi"
+                      value={form.driver_name}
+                      onChange={e => setForm(f => ({ ...f, driver_name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Driver phone</label>
+                    <input
+                      className="input text-sm"
+                      placeholder="+234..."
+                      value={form.driver_phone}
+                      onChange={e => setForm(f => ({ ...f, driver_phone: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              )}
 
-          {/* Action buttons based on shipment state */}
-          <div className="flex gap-2 pt-1">
-            {!shipment && (
-              <button onClick={createShipment} disabled={working}
-                className="btn-primary text-sm flex items-center gap-1.5 flex-1 justify-center">
-                {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
-                Create shipment
-              </button>
-            )}
-            {shipment?.status === 'pending' && (
-              <button onClick={dispatch} disabled={working}
-                className="btn-primary text-sm flex items-center gap-1.5 flex-1 justify-center">
-                {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
-                Dispatch
-              </button>
-            )}
-            {shipment?.status === 'dispatched' && (
-              <button onClick={deliver} disabled={working}
-                className="bg-[#2D6A4F] hover:bg-[#235a40] text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-sm flex items-center gap-1.5 flex-1 justify-center disabled:opacity-50">
-                {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                Mark delivered
-              </button>
-            )}
-            {shipment?.status === 'delivered' && (
-              <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium">
-                <CheckCircle className="w-4 h-4" /> Delivered
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Note (optional)</label>
+                <input
+                  className="input text-sm"
+                  placeholder="e.g. Call customer on arrival"
+                  value={form.tracking_note}
+                  onChange={e => setForm(f => ({ ...f, tracking_note: e.target.value }))}
+                />
               </div>
-            )}
-          </div>
+
+              <div className="flex gap-2 pt-1">
+                {shipment.status === 'pending' && (
+                  <button onClick={dispatch} disabled={working}
+                    className="btn-primary text-sm flex items-center gap-1.5 flex-1 justify-center">
+                    {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
+                    Dispatch to customer
+                  </button>
+                )}
+                {shipment.status === 'dispatched' && (
+                  <button onClick={deliver} disabled={working}
+                    className="bg-[#2D6A4F] hover:bg-[#235a40] text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-sm flex items-center gap-1.5 flex-1 justify-center disabled:opacity-50">
+                    {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    Mark as delivered
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -170,9 +158,9 @@ function ShipmentCard({ order, shipment, onRefresh }) {
 export default function StaffDashboard() {
   const { isStaff, isAuthenticated } = useAuth()
   const navigate = useNavigate()
-  const [paidOrders, setPaidOrders]     = useState([])
-  const [shipments,  setShipments]      = useState({})
-  const [loading,    setLoading]        = useState(true)
+  const [paidOrders, setPaidOrders] = useState([])
+  const [shipments,  setShipments]  = useState({})
+  const [loading,    setLoading]    = useState(true)
 
   useEffect(() => {
     if (!isAuthenticated || !isStaff) { navigate('/'); return }
@@ -188,7 +176,6 @@ export default function StaffDashboard() {
       )
       setPaidOrders(active)
 
-      // Load shipments for each order
       const shipmentMap = {}
       await Promise.allSettled(
         active.map(async (order) => {
@@ -210,34 +197,37 @@ export default function StaffDashboard() {
 
   if (!isStaff) return null
 
+  const inTransit  = Object.values(shipments).filter(s => s?.status === 'dispatched').length
+  const pending    = Object.values(shipments).filter(s => s?.status === 'pending').length
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 bg-[#1A1A2E] rounded-xl flex items-center justify-center">
-          <Truck className="w-5 h-5 text-white" />
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#1A1A2E] rounded-xl flex items-center justify-center">
+            <Truck className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[#1A1A2E]">Staff Dashboard</h1>
+            <p className="text-gray-500 text-sm">Shipments are created automatically when payment is confirmed</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A1A2E]">Staff Dashboard</h1>
-          <p className="text-gray-500 text-sm">Manage active shipments</p>
-        </div>
+        <button onClick={loadData} className="btn-secondary text-sm">Refresh</button>
       </div>
 
-      <div className="flex gap-3 mb-8 mt-6">
-        <div className="card px-4 py-3 flex-1 text-center">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <div className="card px-4 py-3 text-center">
           <p className="text-2xl font-bold text-[#1A1A2E]">{paidOrders.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Active orders</p>
         </div>
-        <div className="card px-4 py-3 flex-1 text-center">
-          <p className="text-2xl font-bold text-[#FF6B35]">
-            {Object.values(shipments).filter(s => s?.status === 'dispatched').length}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">In transit</p>
+        <div className="card px-4 py-3 text-center">
+          <p className="text-2xl font-bold text-amber-500">{pending}</p>
+          <p className="text-xs text-gray-500 mt-0.5">Ready to dispatch</p>
         </div>
-        <div className="card px-4 py-3 flex-1 text-center">
-          <p className="text-2xl font-bold text-emerald-600">
-            {Object.values(shipments).filter(s => s?.status === 'delivered').length}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">Delivered today</p>
+        <div className="card px-4 py-3 text-center">
+          <p className="text-2xl font-bold text-[#FF6B35]">{inTransit}</p>
+          <p className="text-xs text-gray-500 mt-0.5">In transit</p>
         </div>
       </div>
 

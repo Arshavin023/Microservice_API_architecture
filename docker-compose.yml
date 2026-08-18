@@ -237,6 +237,24 @@ services:
 
     volumes:
       - ./shipping-service:/app
+  
+  shipping-service-worker:
+    build: ./shipping-service
+    container_name: shipping-service-worker
+    restart: always
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${SHIPPING_DATABASE_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./shipping-service:/app
+    command: ["python", "-m", "app.workers.consumer"]
 
   notification-service:
     build: ./notification-service

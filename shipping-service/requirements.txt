@@ -10,5 +10,7 @@ fastapi_jwt_auth2
 pika
 httpx
 pytest
-pytest_asyncio
+pytest-asyncio
 aiosqlite
+PyJWT
+aio-pika
