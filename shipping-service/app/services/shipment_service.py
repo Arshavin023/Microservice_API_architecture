@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from typing import cast
 
 from app.models.shipment import Shipment, ShipmentStatus
 from app.utils.events import (
@@ -42,8 +43,8 @@ class ShipmentService:
             raise ShipmentError(f"Shipment already exists for order {order_id}")
 
         shipment = Shipment(
-            order_id=uuid.UUID(order_id),
-            user_id=uuid.UUID(user_id),
+            order_id=uuid.UUID(order_id),  # type: ignore[arg-type]
+            user_id=uuid.UUID(user_id),  # type: ignore[arg-type]
             delivery_address=delivery_address,
             driver_name=driver_name,
             driver_phone=driver_phone,
@@ -100,7 +101,7 @@ class ShipmentService:
             shipment_id=str(shipment.id),
             order_id=str(shipment.order_id),
             user_id=str(shipment.user_id),
-            delivery_address=shipment.delivery_address,
+            delivery_address=cast(str, shipment.delivery_address),
             driver_name=shipment.driver_name,
             driver_phone=shipment.driver_phone,
         )

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi_jwt_auth2 import AuthJWT
 from fastapi_jwt_auth2.exceptions import AuthJWTException
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.models.shipment import Shipment
 from app.db.session import get_db
 from app.core.auth import require_staff, get_current_user_id
 from app.schemas.shipment_schema import (
@@ -34,7 +34,7 @@ async def create_shipment(
     data: CreateShipmentRequest,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_staff),
-):
+) -> Shipment:
     """
     Staff creates a shipment for a paid order.
     Call this after payment.succeeded has been confirmed and the kitchen
@@ -61,7 +61,7 @@ async def dispatch_shipment(
     data: DispatchShipmentRequest,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_staff),
-):
+) -> Shipment:
     """
     Staff marks a shipment as dispatched — driver has picked up the order
     and is on the way to the customer.
@@ -87,7 +87,7 @@ async def notify_customer(
     data: DeliverShipmentRequest,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_staff),
-):
+) -> Shipment:
     """
     Staff notifies customer that rider has delivered the order.
     Sets shipment to 'delivered', publishes shipment.delivery_pending
@@ -114,7 +114,7 @@ async def get_shipment_by_order(
     order_id: str,
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
-):
+) -> Shipment:
     """
     Customer tracks their shipment by order ID.
     Returns 404 if no shipment exists yet (order still being prepared).
@@ -137,7 +137,7 @@ async def get_shipment_by_order_staff(
     order_id: str,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_staff),
-):
+) -> Shipment:
     """Staff can look up any shipment by order ID."""
     uid = _parse_uuid(order_id, "order_id")
     shipment = await ShipmentService.get_by_order(db, str(uid))
@@ -154,7 +154,7 @@ async def get_shipment(
     shipment_id: str,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_staff),
-):
+) -> Shipment:
     """Staff can look up any shipment directly by ID."""
     uid = _parse_uuid(shipment_id, "shipment_id")
     shipment = await ShipmentService.get_by_id(db, str(uid))

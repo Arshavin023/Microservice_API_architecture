@@ -1,9 +1,9 @@
+from uuid import UUID
 from fastapi import HTTPException, Depends
 from fastapi_jwt_auth2 import AuthJWT
 import app.core.jwt_config  # noqa — registers load_config
 
-
-def require_staff(Authorize: AuthJWT = Depends()):
+def require_staff(Authorize: AuthJWT = Depends()) -> None:
     """
     Dependency that enforces staff-only access.
     All shipment write operations (create, dispatch, deliver) are restricted
@@ -18,7 +18,7 @@ def require_staff(Authorize: AuthJWT = Depends()):
         )
 
 
-def get_current_user_id(Authorize: AuthJWT = Depends()):
+def get_current_user_id(Authorize: AuthJWT = Depends()) -> UUID:
     """
     Dependency that extracts user_id from JWT.
     Used for customer-facing read endpoints (track your own shipment).

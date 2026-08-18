@@ -7,13 +7,12 @@ app = FastAPI(title="Shipping Service")
 
 
 @app.exception_handler(AuthJWTException)
-async def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+async def authjwt_exception_handler(request: Request, exc: AuthJWTException) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
 
 
 app.include_router(shipment_router)
 
 
-@app.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {"status": "ok"}

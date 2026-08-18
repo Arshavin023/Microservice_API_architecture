@@ -26,7 +26,7 @@ import uuid
 import logging
 import asyncio
 import aio_pika
-
+from typing import Any
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
@@ -41,12 +41,14 @@ RABBITMQ_URL = os.getenv("RABBITMQ_URL")
 QUEUE_NAME = "shipping_service.payment_events"
 
 
-def get_session_factory():
+def get_session_factory() -> Any:
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not set")
     engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
-    return sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    return sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore[call-overload]
 
 
-async def handle_payment_succeeded(data: dict, session_factory) -> None:
+async def handle_payment_succeeded(data: dict[str, Any], session_factory: Any) -> None:
     """
     Auto-create a pending shipment when payment is confirmed.
     Idempotent — if a shipment already exists for the order, skip.
@@ -70,8 +72,8 @@ async def handle_payment_succeeded(data: dict, session_factory) -> None:
             return
 
         shipment = Shipment(
-            order_id=uuid.UUID(order_id),
-            user_id=uuid.UUID(user_id),
+            order_id=uuid.UUID(order_id),  # type: ignore[arg-type]
+            user_id=uuid.UUID(user_id),  # type: ignore[arg-type]
             delivery_address="To be confirmed by staff",
             status=ShipmentStatus.pending,
         )
@@ -83,7 +85,7 @@ async def handle_payment_succeeded(data: dict, session_factory) -> None:
         )
 
 
-async def main():
+async def main() -> None:
     session_factory = get_session_factory()
 
     while True:
