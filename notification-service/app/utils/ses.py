@@ -5,8 +5,8 @@ from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
-AWS_REGION     = os.getenv("AWS_REGION", "us-east-1")
-SES_SENDER     = os.getenv("SES_SENDER_EMAIL")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+SES_SENDER = os.getenv("SES_SENDER_EMAIL")
 
 if not SES_SENDER:
     raise RuntimeError("SES_SENDER_EMAIL is not set")
