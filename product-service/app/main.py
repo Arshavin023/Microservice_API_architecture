@@ -14,7 +14,7 @@ app.include_router(product_router)
 
 
 @app.exception_handler(AuthJWTException)
-def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+def authjwt_exception_handler(request: Request, exc: AuthJWTException) -> JSONResponse:
     # Without this, any JWT failure (missing token, expired token, bad
     # signature) is an unhandled exception type FastAPI doesn't know
     # how to format — it falls through as a bare 500 instead of the
@@ -25,6 +25,5 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
     )
 
 
-@app.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {"status": "ok"}

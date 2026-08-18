@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
+from app.models.product import Product
 from typing import Optional
 
 from app.schemas.product_schema import ProductCreate, ProductUpdate, ProductResponse
@@ -18,47 +19,35 @@ def _parse_uuid(value: str, field: str = "id") -> UUID:
     except ValueError:
         raise HTTPException(status_code=422, detail=f"Invalid {field} format")
 
-
 @router.get("", response_model=list[ProductResponse])
 async def list_products(
     category_id: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
-):
-    # Cast category_id query param if provided — same reasoning as path params
+) -> list[Product]:
     uid = _parse_uuid(category_id, "category_id") if category_id else None
-    return await ProductService.list_products(db, category_id=uid)
-
+    return await ProductService.list_products(db, category_id=str(uid) if uid else None)
 
 @router.get("/{product_id}", response_model=ProductResponse)
-async def get_product(product_id: str, db: AsyncSession = Depends(get_db)):
+async def get_product(product_id: str, db: AsyncSession = Depends(get_db)) -> Product:
     uid = _parse_uuid(product_id, "product_id")
-    product = await ProductService.get_product(db, uid)
+    product = await ProductService.get_product(db, str(uid))
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
 
-@router.post(
-    "",
-    response_model=ProductResponse,
-    status_code=201,
-    dependencies=[Depends(require_staff)],
-)
-async def create_product(data: ProductCreate, db: AsyncSession = Depends(get_db)):
+@router.post("", response_model=ProductResponse, status_code=201, dependencies=[Depends(require_staff)])
+async def create_product(data: ProductCreate, db: AsyncSession = Depends(get_db)) -> Product:
     payload = data.model_dump()
     return await ProductService.create_product(db, payload)
 
 
-@router.patch(
-    "/{product_id}",
-    response_model=ProductResponse,
-    dependencies=[Depends(require_staff)],
-)
+@router.patch("/{product_id}", response_model=ProductResponse, dependencies=[Depends(require_staff)])
 async def update_product(
     product_id: str, updates: ProductUpdate, db: AsyncSession = Depends(get_db)
-):
+) -> Product:
     uid = _parse_uuid(product_id, "product_id")
-    product = await ProductService.get_product(db, uid)
+    product = await ProductService.get_product(db, str(uid))
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return await ProductService.update_product(
@@ -67,9 +56,9 @@ async def update_product(
 
 
 @router.delete("/{product_id}", status_code=204, dependencies=[Depends(require_staff)])
-async def delete_product(product_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_product(product_id: str, db: AsyncSession = Depends(get_db)) -> None:
     uid = _parse_uuid(product_id, "product_id")
-    product = await ProductService.get_product(db, uid)
+    product = await ProductService.get_product(db, str(uid))
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     await ProductService.delete_product(db, product)
