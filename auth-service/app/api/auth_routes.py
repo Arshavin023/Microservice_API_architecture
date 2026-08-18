@@ -42,7 +42,7 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8001")
 
 
 @router.post("/register")
-async def register(user: SignUpModel, db: AsyncSession = Depends(get_db)):
+async def register(user: SignUpModel, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
     try:
         created_user = await AuthService.register(db, user)
     except AuthError as e:
@@ -69,7 +69,7 @@ async def register(user: SignUpModel, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/verify-email")
-async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+async def verify_email(token: str, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
     email = confirm_verification_token(token)
 
     if not email:
@@ -89,8 +89,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    user: LoginModel, db: AsyncSession = Depends(get_db), Authorize: AuthJWT = Depends()
-):
+    user: LoginModel, db: AsyncSession = Depends(get_db), Authorize: AuthJWT = Depends()) -> dict[str, str]:
     db_user = await AuthService.authenticate(db, user)
 
     if not db_user:
@@ -118,7 +117,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-async def refresh(Authorize: AuthJWT = Depends()):
+async def refresh(Authorize: AuthJWT = Depends()) -> dict[str, str]:
     Authorize.jwt_refresh_token_required()
 
     current_user = Authorize.get_jwt_subject()
@@ -139,7 +138,7 @@ async def refresh(Authorize: AuthJWT = Depends()):
 async def forgot_password(
     data: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, str]:
     """
     Request a password reset email.
 
@@ -171,7 +170,7 @@ async def forgot_password(
 async def reset_password(
     data: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, str]:
     """
     Reset password using a valid reset token.
     Token must be unused and less than 1 hour old.

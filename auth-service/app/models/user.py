@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 
 
-class UserAuth(Base):
+class UserAuth(Base): # type: ignore[misc]
     __tablename__ = "users_auth"
     id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: uuid6.uuid7())
     username = Column(String(50), unique=True, nullable=False)

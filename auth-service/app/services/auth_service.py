@@ -3,6 +3,7 @@ from sqlalchemy.future import select
 from app.models.user import UserAuth
 from app.core.security import hash_password, verify_password
 from app.utils.events import publish_user_registered
+from app.schemas.auth_schema import SignUpModel, LoginModel
 
 
 class AuthError(Exception):
@@ -14,7 +15,7 @@ class AuthError(Exception):
 class AuthService:
 
     @staticmethod
-    async def register(db: AsyncSession, data):
+    async def register(db: AsyncSession, data: SignUpModel) -> UserAuth:
         result = await db.execute(
             select(UserAuth).where(UserAuth.username == data.username)
         )
@@ -45,7 +46,7 @@ class AuthService:
         return user
 
     @staticmethod
-    async def authenticate(db: AsyncSession, data):
+    async def authenticate(db: AsyncSession, data: LoginModel) -> UserAuth | None:
         result = await db.execute(
             select(UserAuth).where(UserAuth.username == data.username)
         )
