@@ -10,6 +10,7 @@ PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8
 
 class PaymentServiceError(Exception):
     """Raised when payment-service is unreachable or returns an error."""
+
     pass
 
 

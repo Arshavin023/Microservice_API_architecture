@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class CheckoutError(Exception):
     """User-facing checkout failure — price changed, item unavailable, etc."""
+
     pass
 
 
@@ -69,25 +70,26 @@ class OrderService:
 
             live_price = Decimal(str(live["unit_price"]))
             if live_price != cart_item.unit_price:
-                price_changes.append({
-                    "item": cart_item.product_name,
-                    "size": cart_item.size,
-                    "old_price": str(cart_item.unit_price),
-                    "new_price": str(live_price),
-                })
+                price_changes.append(
+                    {
+                        "item": cart_item.product_name,
+                        "size": cart_item.size,
+                        "old_price": str(cart_item.unit_price),
+                        "new_price": str(live_price),
+                    }
+                )
 
-            verified_items.append({
-                "cart_item": cart_item,
-                "live_price": live_price,
-                "product_name": live["product_name"],
-                "size": live["size"],
-            })
+            verified_items.append(
+                {
+                    "cart_item": cart_item,
+                    "live_price": live_price,
+                    "product_name": live["product_name"],
+                    "size": live["size"],
+                }
+            )
 
         # Phase 2: all items verified — create the order with locked prices.
-        total = sum(
-            v["live_price"] * v["cart_item"].quantity
-            for v in verified_items
-        )
+        total = sum(v["live_price"] * v["cart_item"].quantity for v in verified_items)
 
         order = Order(
             user_id=user_id,
@@ -112,15 +114,17 @@ class OrderService:
                 subtotal=subtotal,
             )
             db.add(oi)
-            order_items_payload.append({
-                "product_id": str(ci.product_id),
-                "variant_id": str(ci.variant_id),
-                "product_name": v["product_name"],
-                "size": v["size"],
-                "unit_price": str(v["live_price"]),
-                "quantity": ci.quantity,
-                "subtotal": str(subtotal),
-            })
+            order_items_payload.append(
+                {
+                    "product_id": str(ci.product_id),
+                    "variant_id": str(ci.variant_id),
+                    "product_name": v["product_name"],
+                    "size": v["size"],
+                    "unit_price": str(v["live_price"]),
+                    "quantity": ci.quantity,
+                    "subtotal": str(subtotal),
+                }
+            )
 
         # Phase 3: mark cart as checked out, all in one transaction.
         cart.status = "checked_out"
@@ -130,9 +134,7 @@ class OrderService:
         # load relationships, causing MissingGreenlet when serializing
         # order.items in the response.
         result = await db.execute(
-            select(Order)
-            .options(selectinload(Order.items))
-            .where(Order.id == order.id)
+            select(Order).options(selectinload(Order.items)).where(Order.id == order.id)
         )
         order = result.scalar_one()
 
@@ -168,7 +170,9 @@ class OrderService:
         return order
 
     @staticmethod
-    async def get_order(db: AsyncSession, order_id: UUID, user_id: UUID) -> Order | None:
+    async def get_order(
+        db: AsyncSession, order_id: UUID, user_id: UUID
+    ) -> Order | None:
         result = await db.execute(
             select(Order)
             .options(selectinload(Order.items))

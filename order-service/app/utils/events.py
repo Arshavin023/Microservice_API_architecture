@@ -14,7 +14,9 @@ EXCHANGE_TYPE = "topic"
 ROUTING_KEY_ORDER_PLACED = "order.placed"
 
 
-def publish_order_placed(order_id: str, user_id: str, total_amount: str, items: list) -> None:
+def publish_order_placed(
+    order_id: str, user_id: str, total_amount: str, items: list
+) -> None:
     """
     Publishes an order.placed event so payment-service (and any future
     service) can react independently without order-service calling them.

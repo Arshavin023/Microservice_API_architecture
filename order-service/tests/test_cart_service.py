@@ -4,6 +4,7 @@ Unit tests for CartService.
 Tests run against an in-memory SQLite database — no real PostgreSQL or
 RabbitMQ needed. Each test gets a fresh database via the db fixture.
 """
+
 import uuid
 import pytest
 import pytest_asyncio
@@ -22,6 +23,7 @@ def _str_uuid() -> str:
 
 
 # ── get_active_cart ───────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestGetActiveCart:
@@ -62,6 +64,7 @@ class TestGetActiveCart:
 
 # ── get_or_create_cart ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestGetOrCreateCart:
 
@@ -88,6 +91,7 @@ class TestGetOrCreateCart:
 
 # ── add_item ──────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestAddItem:
 
@@ -98,7 +102,8 @@ class TestAddItem:
         variant_id = _str_uuid()
 
         item = await CartService.add_item(
-            db, cart,
+            db,
+            cart,
             product_id=product_id,
             variant_id=variant_id,
             product_name="Margherita",
@@ -119,16 +124,24 @@ class TestAddItem:
         variant_id = _str_uuid()
 
         await CartService.add_item(
-            db, cart,
-            product_id=product_id, variant_id=variant_id,
-            product_name="Margherita", size="large",
-            unit_price=Decimal("14.99"), quantity=1,
+            db,
+            cart,
+            product_id=product_id,
+            variant_id=variant_id,
+            product_name="Margherita",
+            size="large",
+            unit_price=Decimal("14.99"),
+            quantity=1,
         )
         item = await CartService.add_item(
-            db, cart,
-            product_id=product_id, variant_id=variant_id,
-            product_name="Margherita", size="large",
-            unit_price=Decimal("14.99"), quantity=2,
+            db,
+            cart,
+            product_id=product_id,
+            variant_id=variant_id,
+            product_name="Margherita",
+            size="large",
+            unit_price=Decimal("14.99"),
+            quantity=2,
         )
 
         # Should be merged into one row with quantity=3, not two separate rows
@@ -136,33 +149,41 @@ class TestAddItem:
 
     async def test_different_variants_create_separate_rows(self, db):
         from sqlalchemy.future import select
+
         user_id = _uuid()
         cart = await CartService.get_or_create_cart(db, user_id)
         product_id = _str_uuid()
 
         await CartService.add_item(
-            db, cart,
-            product_id=product_id, variant_id=_str_uuid(),
-            product_name="Margherita", size="small",
-            unit_price=Decimal("8.99"), quantity=1,
+            db,
+            cart,
+            product_id=product_id,
+            variant_id=_str_uuid(),
+            product_name="Margherita",
+            size="small",
+            unit_price=Decimal("8.99"),
+            quantity=1,
         )
         await CartService.add_item(
-            db, cart,
-            product_id=product_id, variant_id=_str_uuid(),
-            product_name="Margherita", size="large",
-            unit_price=Decimal("14.99"), quantity=1,
+            db,
+            cart,
+            product_id=product_id,
+            variant_id=_str_uuid(),
+            product_name="Margherita",
+            size="large",
+            unit_price=Decimal("14.99"),
+            quantity=1,
         )
 
         # Query items directly rather than via relationship reload
         # to avoid SQLite UUID comparison issues in get_active_cart
-        result = await db.execute(
-            select(CartItem).where(CartItem.cart_id == cart.id)
-        )
+        result = await db.execute(select(CartItem).where(CartItem.cart_id == cart.id))
         items = result.scalars().all()
         assert len(items) == 2
 
 
 # ── remove_item ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestRemoveItem:
@@ -171,10 +192,14 @@ class TestRemoveItem:
         user_id = _uuid()
         cart = await CartService.get_or_create_cart(db, user_id)
         item = await CartService.add_item(
-            db, cart,
-            product_id=_str_uuid(), variant_id=_str_uuid(),
-            product_name="Margherita", size="large",
-            unit_price=Decimal("14.99"), quantity=1,
+            db,
+            cart,
+            product_id=_str_uuid(),
+            variant_id=_str_uuid(),
+            product_name="Margherita",
+            size="large",
+            unit_price=Decimal("14.99"),
+            quantity=1,
         )
 
         result = await CartService.remove_item(db, cart, item.id)
@@ -184,10 +209,14 @@ class TestRemoveItem:
         user_id = _uuid()
         cart = await CartService.get_or_create_cart(db, user_id)
         item = await CartService.add_item(
-            db, cart,
-            product_id=_str_uuid(), variant_id=_str_uuid(),
-            product_name="Margherita", size="large",
-            unit_price=Decimal("14.99"), quantity=1,
+            db,
+            cart,
+            product_id=_str_uuid(),
+            variant_id=_str_uuid(),
+            product_name="Margherita",
+            size="large",
+            unit_price=Decimal("14.99"),
+            quantity=1,
         )
 
         await CartService.remove_item(db, cart, item.id)
@@ -208,10 +237,14 @@ class TestRemoveItem:
         cart_b = await CartService.get_or_create_cart(db, user_b)
 
         item = await CartService.add_item(
-            db, cart_a,
-            product_id=_str_uuid(), variant_id=_str_uuid(),
-            product_name="Margherita", size="large",
-            unit_price=Decimal("14.99"), quantity=1,
+            db,
+            cart_a,
+            product_id=_str_uuid(),
+            variant_id=_str_uuid(),
+            product_name="Margherita",
+            size="large",
+            unit_price=Decimal("14.99"),
+            quantity=1,
         )
 
         # cart_b tries to remove cart_a's item — must return False
@@ -220,6 +253,7 @@ class TestRemoveItem:
 
 
 # ── mark_checked_out ──────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestMarkCheckedOut:

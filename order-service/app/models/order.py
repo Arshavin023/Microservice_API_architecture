@@ -1,6 +1,15 @@
 import uuid6
 import enum
-from sqlalchemy import Column, String, Integer, Numeric, DateTime, ForeignKey, Enum, func
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    Numeric,
+    DateTime,
+    ForeignKey,
+    Enum,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base import Base
@@ -9,12 +18,14 @@ from app.db.base import Base
 class OrderStatus(str, enum.Enum):
     draft = "draft"
     pending_payment = "pending_payment"  # order created, awaiting payment
-    confirmed = "confirmed"   # payment succeeded
-    paid = "paid"             # payment-service will drive this later
-    shipped = "shipped"       # shipping-service will drive this later
-    delivered = "delivered"   # shipping-service will drive this later
+    confirmed = "confirmed"  # payment succeeded
+    paid = "paid"  # payment-service will drive this later
+    shipped = "shipped"  # shipping-service will drive this later
+    delivered = "delivered"  # shipping-service will drive this later
     cancelled = "cancelled"
-    awaiting_confirmation = "awaiting_confirmation"  # new status added in ord002 migration
+    awaiting_confirmation = (
+        "awaiting_confirmation"  # new status added in ord002 migration
+    )
 
 
 class Order(Base):
@@ -27,14 +38,18 @@ class Order(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    items = relationship(
+        "OrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
 
 
 class OrderItem(Base):
     __tablename__ = "order_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: uuid6.uuid7())
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, index=True)
+    order_id = Column(
+        UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, index=True
+    )
 
     product_id = Column(UUID(as_uuid=True), nullable=False)
     variant_id = Column(UUID(as_uuid=True), nullable=False)

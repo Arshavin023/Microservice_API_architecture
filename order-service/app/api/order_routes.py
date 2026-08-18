@@ -232,9 +232,7 @@ from pydantic import BaseModel
 from app.db.session import get_db
 from app.core.auth import get_current_user_id, require_staff
 from app.models.order import Order, OrderStatus
-from app.schemas.order_schema import (
-    CartItemAdd, CartResponse, OrderResponse
-)
+from app.schemas.order_schema import CartItemAdd, CartResponse, OrderResponse
 from app.services.cart_service import CartService
 from app.services.order_service import OrderService, CheckoutError
 from app.utils.product_client import ProductServiceError
@@ -256,6 +254,7 @@ def _parse_uuid(value: str, field: str = "id") -> UUID:
 
 # ─── Cart endpoints ───────────────────────────────────────────────
 
+
 @router.get("/cart", response_model=CartResponse)
 async def get_cart(
     user_id: UUID = Depends(get_current_user_id),
@@ -274,7 +273,8 @@ async def add_to_cart(
 ):
     cart = await CartService.get_or_create_cart(db, user_id)
     await CartService.add_item(
-        db, cart,
+        db,
+        cart,
         product_id=str(item.product_id),
         variant_id=str(item.variant_id),
         product_name=item.product_name,
@@ -302,6 +302,7 @@ async def remove_from_cart(
 
 
 # ─── Checkout ─────────────────────────────────────────────────────
+
 
 @router.post("/checkout", response_model=OrderResponse, status_code=201)
 async def checkout(
@@ -334,6 +335,7 @@ async def checkout(
 
 # ─── Order history ────────────────────────────────────────────────
 
+
 @router.get("/orders", response_model=list[OrderResponse])
 async def list_orders(
     user_id: UUID = Depends(get_current_user_id),
@@ -356,6 +358,7 @@ async def list_orders(
 
 # ─── Staff: all orders ────────────────────────────────────────────
 
+
 @router.get("/orders/all", response_model=list[OrderResponse])
 async def get_all_orders(
     db: AsyncSession = Depends(get_db),
@@ -364,11 +367,15 @@ async def get_all_orders(
     """Staff-only — returns all active orders across all users."""
     result = await db.execute(
         select(Order)
-        .where(Order.status.in_([
-            OrderStatus.paid,
-            OrderStatus.shipped,
-            OrderStatus.awaiting_confirmation,
-        ]))
+        .where(
+            Order.status.in_(
+                [
+                    OrderStatus.paid,
+                    OrderStatus.shipped,
+                    OrderStatus.awaiting_confirmation,
+                ]
+            )
+        )
         .options(selectinload(Order.items))
         .order_by(Order.created_at.desc())
     )
@@ -376,6 +383,7 @@ async def get_all_orders(
 
 
 # ─── Single order ─────────────────────────────────────────────────
+
 
 @router.get("/orders/{order_id}", response_model=OrderResponse)
 async def get_order(
@@ -438,12 +446,12 @@ async def confirm_delivery(
     if order.status.value != "awaiting_confirmation":
         raise HTTPException(
             status_code=409,
-            detail=f"Order cannot be confirmed — current status is '{order.status.value}'"
+            detail=f"Order cannot be confirmed — current status is '{order.status.value}'",
         )
     order.status = OrderStatus.delivered
     await db.commit()
     await db.refresh(order)  # <--- Re-populates expired scalar fields asynchronously
-    
+
     return OrderResponse(
         id=order.id,
         status=order.status,

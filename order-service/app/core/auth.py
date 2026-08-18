@@ -40,10 +40,7 @@ def get_current_user_id(Authorize: AuthJWT = Depends()) -> UUID:
     claims = Authorize.get_raw_jwt()
     user_id = claims.get("user_id")
     if not user_id:
-        raise HTTPException(
-            status_code=422,
-            detail="JWT is missing user_id claim."
-        )
+        raise HTTPException(status_code=422, detail="JWT is missing user_id claim.")
     return UUID(user_id)
 
 

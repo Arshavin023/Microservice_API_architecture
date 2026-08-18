@@ -393,7 +393,8 @@ async def _seed_cart(db, user_id: uuid.UUID, items: list[dict]) -> object:
     cart = await CartService.get_or_create_cart(db, user_id)
     for item in items:
         await CartService.add_item(
-            db, cart,
+            db,
+            cart,
             product_id=item["product_id"],
             variant_id=item["variant_id"],
             product_name=item["product_name"],
@@ -407,20 +408,36 @@ async def _seed_cart(db, user_id: uuid.UUID, items: list[dict]) -> object:
 
 # ── checkout — happy path ─────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestCheckoutHappyPath:
 
     async def test_checkout_creates_confirmed_order(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 2,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 2,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed") as mock_pub, \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed") as mock_pub,
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant()
             mock_pub.return_value = None
             mock_pay.return_value = {
@@ -435,16 +452,31 @@ class TestCheckoutHappyPath:
 
     async def test_checkout_locks_price_from_product_service(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
         # product-service returns a different (live) price
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant(price="16.99")
 
             order = await OrderService.checkout(db, cart, user_id)
@@ -455,15 +487,30 @@ class TestCheckoutHappyPath:
 
     async def test_checkout_records_price_change(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant(price="16.99")
 
             order = await OrderService.checkout(db, cart, user_id)
@@ -474,15 +521,30 @@ class TestCheckoutHappyPath:
 
     async def test_checkout_no_price_changes_when_price_matches(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant(price="14.99")
 
             order = await OrderService.checkout(db, cart, user_id)
@@ -491,15 +553,30 @@ class TestCheckoutHappyPath:
 
     async def test_checkout_calculates_correct_total(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 3,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 3,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant(price="14.99")
 
             order = await OrderService.checkout(db, cart, user_id)
@@ -508,15 +585,30 @@ class TestCheckoutHappyPath:
 
     async def test_checkout_creates_order_items(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 2,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 2,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant()
 
             order = await OrderService.checkout(db, cart, user_id)
@@ -527,15 +619,30 @@ class TestCheckoutHappyPath:
 
     async def test_checkout_marks_cart_as_checked_out(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant()
             await OrderService.checkout(db, cart, user_id)
 
@@ -545,14 +652,27 @@ class TestCheckoutHappyPath:
 
     async def test_checkout_publishes_order_placed_event(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed") as mock_pub:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed") as mock_pub,
+        ):
             mock_gv.return_value = _live_variant()
             await OrderService.checkout(db, cart, user_id)
 
@@ -562,6 +682,7 @@ class TestCheckoutHappyPath:
 
 
 # ── checkout — failure cases ──────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestCheckoutFailures:
@@ -575,15 +696,30 @@ class TestCheckoutFailures:
 
     async def test_unavailable_product_raises_checkout_error(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             # product-service returns None — product doesn't exist
             mock_gv.return_value = None
 
@@ -592,15 +728,30 @@ class TestCheckoutFailures:
 
     async def test_out_of_stock_variant_raises_checkout_error(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant(is_available=False)
 
             with pytest.raises(CheckoutError, match="out of stock"):
@@ -608,15 +759,30 @@ class TestCheckoutFailures:
 
     async def test_product_service_unreachable_raises_checkout_error(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.side_effect = ProductServiceError("Connection refused")
 
             with pytest.raises(CheckoutError, match="Connection refused"):
@@ -624,15 +790,30 @@ class TestCheckoutFailures:
 
     async def test_failed_checkout_does_not_create_order(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = None
             with pytest.raises(CheckoutError):
                 await OrderService.checkout(db, cart, user_id)
@@ -643,15 +824,30 @@ class TestCheckoutFailures:
 
     async def test_failed_checkout_leaves_cart_active(self, db):
         user_id = _uuid()
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = None
             with pytest.raises(CheckoutError):
                 await OrderService.checkout(db, cart, user_id)
@@ -663,18 +859,34 @@ class TestCheckoutFailures:
 
 # ── get_order / list_orders ───────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestGetAndListOrders:
 
     async def _place_order(self, db, user_id):
-        cart = await _seed_cart(db, user_id, [{
-            "product_id": _str_uuid(), "variant_id": _str_uuid(),
-            "product_name": "Margherita", "size": "large",
-            "unit_price": "14.99", "quantity": 1,
-        }])
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        cart = await _seed_cart(
+            db,
+            user_id,
+            [
+                {
+                    "product_id": _str_uuid(),
+                    "variant_id": _str_uuid(),
+                    "product_name": "Margherita",
+                    "size": "large",
+                    "unit_price": "14.99",
+                    "quantity": 1,
+                }
+            ],
+        )
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant()
             return await OrderService.checkout(db, cart, user_id)
 

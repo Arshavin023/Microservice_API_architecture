@@ -494,6 +494,7 @@ ORDERS_URL = "/orders"
 
 # ── Local helpers (defined here so no cross-file import needed) ───────────
 
+
 def new_uuid() -> uuid.UUID:
     return uuid.uuid4()
 
@@ -501,6 +502,7 @@ def new_uuid() -> uuid.UUID:
 def make_token(user_id: str, username: str = "testuser", is_staff: bool = False) -> str:
     import os
     import jwt as pyjwt
+
     secret = os.environ.get("JWT_SECRET", "test-secret-key-for-testing-only")
     payload = {
         "sub": username,
@@ -530,6 +532,7 @@ def _live_variant(price: str = "14.99", is_available: bool = True) -> dict:
 
 
 # ── GET /cart ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestGetCart:
@@ -563,6 +566,7 @@ class TestGetCart:
 
 
 # ── POST /cart/items ──────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestAddToCart:
@@ -635,6 +639,7 @@ class TestAddToCart:
 
 # ── DELETE /cart/items/{item_id} ──────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestRemoveFromCart:
 
@@ -661,10 +666,12 @@ class TestRemoveFromCart:
         await self._add_item(client, token)
 
         # Re-fetch cart via GET to get the populated items list
-        cart_data = (await client.get(
-            CART_URL,
-            headers={"Authorization": f"Bearer {token}"},
-        )).json()
+        cart_data = (
+            await client.get(
+                CART_URL,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        ).json()
         item_id = cart_data["items"][0]["id"]
 
         resp = await client.delete(
@@ -701,6 +708,7 @@ class TestRemoveFromCart:
 
 # ── POST /checkout ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestCheckout:
 
@@ -723,9 +731,15 @@ class TestCheckout:
         token = make_token(user_id=user_id, username="testuser")
         await self._setup_cart_with_item(client, token)
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"), \
-             patch("app.services.order_service.initialize_payment", new_callable=AsyncMock) as mock_pay:
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+            patch(
+                "app.services.order_service.initialize_payment", new_callable=AsyncMock
+            ) as mock_pay,
+        ):
             mock_gv.return_value = _live_variant()
             mock_pay.return_value = {
                 "authorization_url": "https://checkout.paystack.com/test",
@@ -763,8 +777,12 @@ class TestCheckout:
         token = make_token(user_id=user_id, username="testuser")
         await self._setup_cart_with_item(client, token)
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"):
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+        ):
             mock_gv.return_value = None  # product no longer exists
             resp = await client.post(
                 CHECKOUT_URL,
@@ -775,12 +793,17 @@ class TestCheckout:
 
     async def test_checkout_product_service_down_503(self, client, db):
         from app.utils.product_client import ProductServiceError
+
         user_id = str(new_uuid())
         token = make_token(user_id=user_id, username="testuser")
         await self._setup_cart_with_item(client, token)
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"):
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+        ):
             mock_gv.side_effect = ProductServiceError("Connection refused")
             resp = await client.post(
                 CHECKOUT_URL,
@@ -794,8 +817,12 @@ class TestCheckout:
         token = make_token(user_id=user_id, username="testuser")
         await self._setup_cart_with_item(client, token)
 
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"):
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+        ):
             mock_gv.return_value = _live_variant(price="19.99")  # price changed
             resp = await client.post(
                 CHECKOUT_URL,
@@ -808,6 +835,7 @@ class TestCheckout:
 
 
 # ── GET /orders ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestListOrders:
@@ -825,8 +853,12 @@ class TestListOrders:
             },
             headers={"Authorization": f"Bearer {token}"},
         )
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"):
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+        ):
             mock_gv.return_value = _live_variant()
             return await client.post(
                 CHECKOUT_URL,
@@ -838,14 +870,18 @@ class TestListOrders:
         token = make_token(user_id=user_id, username="testuser")
         await self._place_order(client, token)
 
-        resp = await client.get(ORDERS_URL, headers={"Authorization": f"Bearer {token}"})
+        resp = await client.get(
+            ORDERS_URL, headers={"Authorization": f"Bearer {token}"}
+        )
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
     async def test_list_orders_empty_for_new_user(self, client, db):
         user_id = str(new_uuid())
         token = make_token(user_id=user_id, username="testuser")
-        resp = await client.get(ORDERS_URL, headers={"Authorization": f"Bearer {token}"})
+        resp = await client.get(
+            ORDERS_URL, headers={"Authorization": f"Bearer {token}"}
+        )
         assert resp.status_code == 200
         assert resp.json() == []
 
@@ -861,11 +897,14 @@ class TestListOrders:
 
         await self._place_order(client, token_a)
 
-        resp = await client.get(ORDERS_URL, headers={"Authorization": f"Bearer {token_b}"})
+        resp = await client.get(
+            ORDERS_URL, headers={"Authorization": f"Bearer {token_b}"}
+        )
         assert resp.json() == []
 
 
 # ── GET /orders/{order_id} ─────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestGetOrder:
@@ -883,8 +922,12 @@ class TestGetOrder:
             },
             headers={"Authorization": f"Bearer {token}"},
         )
-        with patch("app.services.order_service.get_variant", new_callable=AsyncMock) as mock_gv, \
-             patch("app.services.order_service.publish_order_placed"):
+        with (
+            patch(
+                "app.services.order_service.get_variant", new_callable=AsyncMock
+            ) as mock_gv,
+            patch("app.services.order_service.publish_order_placed"),
+        ):
             mock_gv.return_value = _live_variant()
             resp = await client.post(
                 CHECKOUT_URL,
@@ -942,6 +985,7 @@ class TestGetOrder:
 
 
 # ── GET /health ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_health_check(client):

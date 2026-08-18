@@ -1,6 +1,15 @@
 import uuid6
 import enum
-from sqlalchemy import Column, String, Integer, Numeric, DateTime, ForeignKey, Enum, func
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    Numeric,
+    DateTime,
+    ForeignKey,
+    Enum,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base import Base
@@ -20,14 +29,18 @@ class Cart(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
-    items = relationship("CartItem", back_populates="cart", cascade="all, delete-orphan")
+    items = relationship(
+        "CartItem", back_populates="cart", cascade="all, delete-orphan"
+    )
 
 
 class CartItem(Base):
     __tablename__ = "cart_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: uuid6.uuid7())
-    cart_id = Column(UUID(as_uuid=True), ForeignKey("carts.id"), nullable=False, index=True)
+    cart_id = Column(
+        UUID(as_uuid=True), ForeignKey("carts.id"), nullable=False, index=True
+    )
 
     # Cross-service references — no FK constraints since product_service_db
     # is a separate database entirely.

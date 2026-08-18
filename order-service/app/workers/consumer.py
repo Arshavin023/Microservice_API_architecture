@@ -8,6 +8,7 @@ Consumes shipping events and drives the order state machine:
 Uses aio-pika (fully async) to avoid event loop conflicts with
 SQLAlchemy's asyncpg driver.
 """
+
 import os
 import json
 import logging
@@ -20,10 +21,10 @@ from sqlalchemy.orm import sessionmaker
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("order-service-worker")
 
-DATABASE_URL  = os.getenv("DATABASE_URL")
-RABBITMQ_URL  = os.getenv("RABBITMQ_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
+RABBITMQ_URL = os.getenv("RABBITMQ_URL")
 EXCHANGE_NAME = "shipping_events"
-QUEUE_NAME    = "order_service.shipping_events"
+QUEUE_NAME = "order_service.shipping_events"
 
 
 def get_session_factory():
@@ -34,12 +35,15 @@ def get_session_factory():
 async def handle_shipment_dispatched(data: dict, session_factory) -> None:
     order_id = data.get("order_id")
     if not order_id:
-        logger.warning("shipment.dispatched missing order_id"); return
+        logger.warning("shipment.dispatched missing order_id")
+        return
 
     async with session_factory() as db:
         result = await db.execute(
-            text("UPDATE orders SET status='shipped', updated_at=now() "
-                 "WHERE id=:oid AND status='paid' RETURNING id"),
+            text(
+                "UPDATE orders SET status='shipped', updated_at=now() "
+                "WHERE id=:oid AND status='paid' RETURNING id"
+            ),
             {"oid": order_id},
         )
         await db.commit()
@@ -47,18 +51,23 @@ async def handle_shipment_dispatched(data: dict, session_factory) -> None:
     if result.fetchone():
         logger.info(f"Order {order_id} → shipped")
     else:
-        logger.warning(f"Order {order_id} not updated — not in 'paid' state (idempotent)")
+        logger.warning(
+            f"Order {order_id} not updated — not in 'paid' state (idempotent)"
+        )
 
 
 async def handle_shipment_delivered(data: dict, session_factory) -> None:
     order_id = data.get("order_id")
     if not order_id:
-        logger.warning("shipment.delivered missing order_id"); return
+        logger.warning("shipment.delivered missing order_id")
+        return
 
     async with session_factory() as db:
         result = await db.execute(
-            text("UPDATE orders SET status='delivered', updated_at=now() "
-                 "WHERE id=:oid AND status IN ('awaiting_confirmation','shipped') RETURNING id"),
+            text(
+                "UPDATE orders SET status='delivered', updated_at=now() "
+                "WHERE id=:oid AND status IN ('awaiting_confirmation','shipped') RETURNING id"
+            ),
             {"oid": order_id},
         )
         await db.commit()
@@ -66,19 +75,24 @@ async def handle_shipment_delivered(data: dict, session_factory) -> None:
     if result.fetchone():
         logger.info(f"Order {order_id} → delivered")
     else:
-        logger.warning(f"Order {order_id} not updated — not in expected state (idempotent)")
+        logger.warning(
+            f"Order {order_id} not updated — not in expected state (idempotent)"
+        )
 
 
 async def handle_delivery_pending(data: dict, session_factory) -> None:
     """Order: shipped → awaiting_confirmation (customer must confirm or auto-confirms in 2hrs)."""
     order_id = data.get("order_id")
     if not order_id:
-        logger.warning("shipment.delivery_pending missing order_id"); return
+        logger.warning("shipment.delivery_pending missing order_id")
+        return
 
     async with session_factory() as db:
         result = await db.execute(
-            text("UPDATE orders SET status='awaiting_confirmation', updated_at=now() "
-                 "WHERE id=:oid AND status='shipped' RETURNING id"),
+            text(
+                "UPDATE orders SET status='awaiting_confirmation', updated_at=now() "
+                "WHERE id=:oid AND status='shipped' RETURNING id"
+            ),
             {"oid": order_id},
         )
         await db.commit()
@@ -86,13 +100,15 @@ async def handle_delivery_pending(data: dict, session_factory) -> None:
     if result.fetchone():
         logger.info(f"Order {order_id} → awaiting_confirmation")
     else:
-        logger.warning(f"Order {order_id} not updated to awaiting_confirmation (idempotent)")
+        logger.warning(
+            f"Order {order_id} not updated to awaiting_confirmation (idempotent)"
+        )
 
 
 HANDLERS = {
-    "shipment.dispatched":       handle_shipment_dispatched,
+    "shipment.dispatched": handle_shipment_dispatched,
     "shipment.delivery_pending": handle_delivery_pending,
-    "shipment.delivered":        handle_shipment_delivered,
+    "shipment.delivered": handle_shipment_delivered,
 }
 
 
@@ -126,8 +142,8 @@ async def main():
                     async for message in queue_iter:
                         async with message.process(requeue=False):
                             try:
-                                data    = json.loads(message.body)
-                                event   = data.get("event")
+                                data = json.loads(message.body)
+                                event = data.get("event")
                                 logger.info(f"Received event: {event}")
                                 handler = HANDLERS.get(event)
                                 if handler:

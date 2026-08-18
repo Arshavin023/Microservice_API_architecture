@@ -7,6 +7,7 @@ PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://product-service:8
 
 class ProductServiceError(Exception):
     """Raised when product-service is unreachable or returns an error."""
+
     pass
 
 
@@ -19,13 +20,9 @@ async def get_variant(product_id: str, variant_id: str) -> Optional[dict]:
     """
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                f"{PRODUCT_SERVICE_URL}/products/{product_id}"
-            )
+            response = await client.get(f"{PRODUCT_SERVICE_URL}/products/{product_id}")
     except httpx.RequestError as e:
-        raise ProductServiceError(
-            f"Could not reach product-service: {e}"
-        ) from e
+        raise ProductServiceError(f"Could not reach product-service: {e}") from e
 
     if response.status_code == 404:
         return None

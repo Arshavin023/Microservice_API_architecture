@@ -239,6 +239,7 @@ async def client(db):
 
 def make_token(user_id: str, username: str = "testuser", is_staff: bool = False) -> str:
     import jwt as pyjwt
+
     secret = os.environ.get("JWT_SECRET", "test-secret-key-for-testing-only")
     payload = {
         "sub": username,
