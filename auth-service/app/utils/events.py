@@ -19,7 +19,9 @@ def _get_connection() -> pika.BlockingConnection:
     return pika.BlockingConnection(params)
 
 
-def _declare_topology(channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
+def _declare_topology(
+    channel: pika.adapters.blocking_connection.BlockingChannel,
+) -> None:
     """
     Declares the exchange this service publishes to. Idempotent —
     safe to call on every publish; RabbitMQ no-ops if it already
@@ -74,4 +76,6 @@ def publish_user_registered(user_id: str, email: str, username: str) -> None:
         logger.info(f"Published user.registered event for user_id={user_id}")
 
     except Exception as e:
-        logger.error(f"Failed to publish user.registered event for user_id={user_id}: {e}")
+        logger.error(
+            f"Failed to publish user.registered event for user_id={user_id}: {e}"
+        )

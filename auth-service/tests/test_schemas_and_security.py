@@ -2,6 +2,7 @@
 Unit tests for auth-service schemas and security utilities.
 No DB or HTTP needed — pure Python.
 """
+
 import pytest
 from pydantic import ValidationError
 
@@ -10,6 +11,7 @@ from app.core.security import hash_password, verify_password
 
 
 # ── Password validator ────────────────────────────────────────────────────────
+
 
 class TestPasswordValidator:
 
@@ -35,13 +37,14 @@ class TestPasswordValidator:
     def test_exactly_8_chars_passes(self):
         assert validate_password_strength("Abcde1!x") == "Abcde1!x"
 
-    @pytest.mark.parametrize("special", list('!@#$%^&*(),.?":{}|<>_-+=[]\\;\'`~'))
+    @pytest.mark.parametrize("special", list("!@#$%^&*(),.?\":{}|<>_-+=[]\\;'`~"))
     def test_various_special_chars_accepted(self, special):
         pwd = f"Secure1{special}"
         assert validate_password_strength(pwd) == pwd
 
 
 # ── SignUpModel schema ────────────────────────────────────────────────────────
+
 
 class TestSignUpModel:
 
@@ -65,6 +68,7 @@ class TestSignUpModel:
 
 
 # ── Password hashing ──────────────────────────────────────────────────────────
+
 
 class TestSecurity:
 
@@ -92,17 +96,24 @@ class TestSecurity:
 
 # ── Verification token ────────────────────────────────────────────────────────
 
+
 class TestVerificationToken:
 
     def test_round_trip(self):
-        from app.utils.verification import generate_verification_token, confirm_verification_token
+        from app.utils.verification import (
+            generate_verification_token,
+            confirm_verification_token,
+        )
+
         token = generate_verification_token("uche@example.com")
         assert confirm_verification_token(token) == "uche@example.com"
 
     def test_tampered_token_returns_none(self):
         from app.utils.verification import confirm_verification_token
+
         assert confirm_verification_token("tampered.token.value") is None
 
     def test_empty_token_returns_none(self):
         from app.utils.verification import confirm_verification_token
+
         assert confirm_verification_token("") is None

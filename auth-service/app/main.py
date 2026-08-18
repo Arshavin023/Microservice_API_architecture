@@ -12,9 +12,11 @@ from pydantic import BaseModel
 class Settings(BaseModel):
     authjwt_secret_key: str = os.getenv("JWT_SECRET")
 
+
 @AuthJWT.load_config
 def get_config():
     return Settings()
+
 
 app = FastAPI(title="Authentication Service")
 app.include_router(auth_router)
@@ -26,6 +28,7 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
         status_code=exc.status_code,
         content={"detail": exc.message},
     )
+
 
 @app.get("/health")
 async def health():

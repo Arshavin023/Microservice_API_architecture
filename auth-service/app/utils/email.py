@@ -2,7 +2,7 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
-AWS_REGION     = os.getenv("AWS_REGION", "us-east-1")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 SES_SENDER_EMAIL = os.getenv("SES_SENDER_EMAIL")
 if not SES_SENDER_EMAIL:
     raise RuntimeError("SES_SENDER_EMAIL is not set")

@@ -1,6 +1,7 @@
 """
 Integration tests for AuthService — real async DB, mocked RabbitMQ & SES.
 """
+
 import pytest
 import pytest_asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
@@ -13,6 +14,7 @@ from app.core.security import hash_password
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _signup(username="uche", email="uche@example.com", password="Secure1!"):
     return SignUpModel(username=username, email=email, password=password)
 
@@ -23,6 +25,7 @@ def _login(username="uche", password="Secure1!"):
 
 # ── Register ──────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestAuthServiceRegister:
 
@@ -32,8 +35,8 @@ class TestAuthServiceRegister:
         assert user.id is not None
         assert user.username == "uche"
         assert user.email == "uche@example.com"
-        assert user.is_active is False           # must be inactive until email verified
-        assert user.password != "Secure1!"       # must be hashed
+        assert user.is_active is False  # must be inactive until email verified
+        assert user.password != "Secure1!"  # must be hashed
 
     @patch("app.services.auth_service.publish_user_registered")
     async def test_register_publishes_event(self, mock_publish, db):
@@ -48,17 +51,13 @@ class TestAuthServiceRegister:
     async def test_duplicate_username_raises_auth_error(self, mock_publish, db):
         await AuthService.register(db, _signup())
         with pytest.raises(AuthError, match="Username already exists"):
-            await AuthService.register(
-                db, _signup(email="other@example.com")
-            )
+            await AuthService.register(db, _signup(email="other@example.com"))
 
     @patch("app.services.auth_service.publish_user_registered")
     async def test_duplicate_email_raises_auth_error(self, mock_publish, db):
         await AuthService.register(db, _signup())
         with pytest.raises(AuthError, match="Email already exists"):
-            await AuthService.register(
-                db, _signup(username="otheruser")
-            )
+            await AuthService.register(db, _signup(username="otheruser"))
 
     @patch("app.services.auth_service.publish_user_registered")
     async def test_publish_failure_does_not_raise(self, mock_publish, db):
@@ -73,6 +72,7 @@ class TestAuthServiceRegister:
 
 
 # ── Authenticate ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestAuthServiceAuthenticate:
@@ -107,6 +107,7 @@ class TestAuthServiceAuthenticate:
 
 # ── Activate user by email ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestActivateUser:
 
@@ -127,10 +128,13 @@ class TestActivateUser:
 
     async def test_activate_sets_is_active(self, db):
         from sqlalchemy.future import select
+
         await AuthService.activate_user_by_email(db, "inactive@example.com")
-        row = (await db.execute(
-            select(UserAuth).where(UserAuth.email == "inactive@example.com")
-        )).scalar_one_or_none()
+        row = (
+            await db.execute(
+                select(UserAuth).where(UserAuth.email == "inactive@example.com")
+            )
+        ).scalar_one_or_none()
         assert row.is_active is True
 
     async def test_activate_unknown_email_returns_false(self, db):

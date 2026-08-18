@@ -2,6 +2,7 @@
 End-to-end route tests for auth-service.
 All external I/O (SES, RabbitMQ) is mocked at the module level.
 """
+
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -22,6 +23,7 @@ VALID_PAYLOAD = {
 
 
 # ── /auth/register ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestRegisterRoute:
@@ -80,6 +82,7 @@ class TestRegisterRoute:
 
 # ── /auth/verify-email ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestVerifyEmailRoute:
 
@@ -89,6 +92,7 @@ class TestVerifyEmailRoute:
         await client.post(REGISTER_URL, json=VALID_PAYLOAD)
 
         from app.utils.verification import generate_verification_token
+
         token = generate_verification_token(VALID_PAYLOAD["email"])
 
         resp = await client.get(f"{VERIFY_URL}?token={token}")
@@ -102,6 +106,7 @@ class TestVerifyEmailRoute:
     async def test_verify_unknown_email_token_404(self, client):
         """Token is valid but no matching user exists."""
         from app.utils.verification import generate_verification_token
+
         token = generate_verification_token("ghost@example.com")
         resp = await client.get(f"{VERIFY_URL}?token={token}")
         assert resp.status_code == 404
@@ -109,18 +114,22 @@ class TestVerifyEmailRoute:
 
 # ── /auth/login ───────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestLoginRoute:
 
     @pytest.fixture(autouse=True)
     def _patch_externals(self):
-        with patch("app.services.auth_service.publish_user_registered"), \
-             patch("app.api.auth_routes.send_verification_email"):
+        with (
+            patch("app.services.auth_service.publish_user_registered"),
+            patch("app.api.auth_routes.send_verification_email"),
+        ):
             yield
 
     async def _register_and_activate(self, client):
         await client.post(REGISTER_URL, json=VALID_PAYLOAD)
         from app.utils.verification import generate_verification_token
+
         token = generate_verification_token(VALID_PAYLOAD["email"])
         await client.get(f"{VERIFY_URL}?token={token}")
 
@@ -160,18 +169,22 @@ class TestLoginRoute:
 
 # ── /auth/refresh ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestRefreshRoute:
 
     @pytest.fixture(autouse=True)
     def _patch_externals(self):
-        with patch("app.services.auth_service.publish_user_registered"), \
-             patch("app.api.auth_routes.send_verification_email"):
+        with (
+            patch("app.services.auth_service.publish_user_registered"),
+            patch("app.api.auth_routes.send_verification_email"),
+        ):
             yield
 
     async def _get_tokens(self, client):
         await client.post(REGISTER_URL, json=VALID_PAYLOAD)
         from app.utils.verification import generate_verification_token
+
         token = generate_verification_token(VALID_PAYLOAD["email"])
         await client.get(f"{VERIFY_URL}?token={token}")
         resp = await client.post(

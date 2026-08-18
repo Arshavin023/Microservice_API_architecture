@@ -1,6 +1,7 @@
 """
 Auth-service test fixtures.
 """
+
 import os
 import pytest
 import pytest_asyncio
@@ -15,14 +16,17 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 from fastapi_jwt_auth2 import AuthJWT
 from pydantic import BaseModel
 
+
 # 1. Define the JWT Settings schema expected by fastapi-jwt-auth2
 class JWTSettings(BaseModel):
     authjwt_secret_key: str = os.getenv("JWT_SECRET", "test-secret-key-for-ci")
+
 
 # 2. Register the configuration callback hook
 @AuthJWT.load_config
 def get_cookie_status():
     return JWTSettings()
+
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -90,9 +94,11 @@ async def client(engine):
 
 # ── Token helpers ─────────────────────────────────────────────────────────────
 
+
 def make_staff_token() -> str:
     from fastapi_jwt_auth2 import AuthJWT
     from datetime import timedelta
+
     auth = AuthJWT()
     return auth.create_access_token(
         subject="staffuser",
@@ -100,9 +106,11 @@ def make_staff_token() -> str:
         user_claims={"is_staff": True},
     )
 
+
 def make_token(user_id: str = "uche", is_staff: bool = False) -> str:
     from fastapi_jwt_auth2 import AuthJWT
     from datetime import timedelta
+
     auth = AuthJWT()
     return auth.create_access_token(
         subject=user_id,  # Now correctly embedding the UUID string

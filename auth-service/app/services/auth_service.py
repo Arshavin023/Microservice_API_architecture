@@ -7,6 +7,7 @@ from app.utils.events import publish_user_registered
 
 class AuthError(Exception):
     """Raised for known, user-facing auth failures (not server errors)."""
+
     pass
 
 
@@ -20,9 +21,7 @@ class AuthService:
         if result.scalar_one_or_none():
             raise AuthError("Username already exists")
 
-        result = await db.execute(
-            select(UserAuth).where(UserAuth.email == data.email)
-        )
+        result = await db.execute(select(UserAuth).where(UserAuth.email == data.email))
         if result.scalar_one_or_none():
             raise AuthError("Email already exists")
 
@@ -64,9 +63,7 @@ class AuthService:
         Returns True if a matching user was found and activated,
         False if no such user exists.
         """
-        result = await db.execute(
-            select(UserAuth).where(UserAuth.email == email)
-        )
+        result = await db.execute(select(UserAuth).where(UserAuth.email == email))
         user = result.scalar_one_or_none()
 
         if not user:

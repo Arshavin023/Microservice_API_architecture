@@ -3,22 +3,35 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 from pydantic import BaseModel
-from app.schemas.auth_schema import SignUpModel, LoginModel, TokenResponse, RefreshResponse
+from app.schemas.auth_schema import (
+    SignUpModel,
+    LoginModel,
+    TokenResponse,
+    RefreshResponse,
+)
 from app.services.auth_service import AuthService, AuthError
 from app.models.user import UserAuth
 from app.db.session import get_db
-from app.utils.verification import generate_verification_token, confirm_verification_token, generate_reset_token, confirm_reset_token
+from app.utils.verification import (
+    generate_verification_token,
+    confirm_verification_token,
+    generate_reset_token,
+    confirm_reset_token,
+)
 from app.utils.email import send_verification_email, send_password_reset_email
 from fastapi_jwt_auth2 import AuthJWT
 from werkzeug.security import generate_password_hash
 from sqlalchemy.future import select
 
+
 class ForgotPasswordRequest(BaseModel):
     email: str
+
 
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -60,48 +73,48 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     email = confirm_verification_token(token)
 
     if not email:
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+        raise HTTPException(
+            status_code=400, detail="Invalid or expired verification link"
+        )
 
     activated = await AuthService.activate_user_by_email(db, email)
 
     if not activated:
-        raise HTTPException(status_code=404, detail="No account found for this verification link")
+        raise HTTPException(
+            status_code=404, detail="No account found for this verification link"
+        )
 
     return {"message": "Email verified. You can now log in."}
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    user: LoginModel,
-    db: AsyncSession = Depends(get_db),
-    Authorize: AuthJWT = Depends()
-    ):
+    user: LoginModel, db: AsyncSession = Depends(get_db), Authorize: AuthJWT = Depends()
+):
     db_user = await AuthService.authenticate(db, user)
 
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not db_user.is_active:
-        raise HTTPException(status_code=403, detail="Please verify your email before logging in")
+        raise HTTPException(
+            status_code=403, detail="Please verify your email before logging in"
+        )
 
     access = Authorize.create_access_token(
         subject=db_user.username,
         expires_time=timedelta(minutes=15),
         user_claims={
             "is_staff": db_user.is_staff,
-            "user_id": str(db_user.id),   # embedded so downstream services can scope
-        }                                  # operations to a user without knowing their username
+            "user_id": str(db_user.id),  # embedded so downstream services can scope
+        },  # operations to a user without knowing their username
     )
 
     refresh = Authorize.create_refresh_token(
-        subject=db_user.username,
-        user_claims={"user_id": str(db_user.id)}
+        subject=db_user.username, user_claims={"user_id": str(db_user.id)}
     )
 
-    return {"access": access,
-            "refresh": refresh,
-            "token_type": "bearer"
-            }
+    return {"access": access, "refresh": refresh, "token_type": "bearer"}
 
 
 @router.post("/refresh", response_model=RefreshResponse)
@@ -115,7 +128,7 @@ async def refresh(Authorize: AuthJWT = Depends()):
     new_access = Authorize.create_access_token(
         subject=current_user,
         expires_time=timedelta(minutes=15),
-        user_claims={"user_id": user_id} if user_id else {}
+        user_claims={"user_id": user_id} if user_id else {},
     )
 
     return {"access": new_access, "token_type": "bearer"}
@@ -126,7 +139,7 @@ async def refresh(Authorize: AuthJWT = Depends()):
 async def forgot_password(
     data: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
-    ):
+):
     """
     Request a password reset email.
 
@@ -137,9 +150,7 @@ async def forgot_password(
     from app.utils.verification import generate_reset_token
     from app.utils.email import send_password_reset_email
 
-    result = await db.execute(
-        select(UserAuth).where(UserAuth.email == data.email)
-    )
+    result = await db.execute(select(UserAuth).where(UserAuth.email == data.email))
     user = result.scalar_one_or_none()
 
     if user:
@@ -152,9 +163,7 @@ async def forgot_password(
             pass
 
     # Always return the same response — prevents user enumeration
-    return {
-        "detail": "If that email is registered, a reset link has been sent."
-    }
+    return {"detail": "If that email is registered, a reset link has been sent."}
 
 
 # ── POST /auth/reset-password ─────────────────────────────────────────────────
@@ -174,12 +183,10 @@ async def reset_password(
     if not email:
         raise HTTPException(
             status_code=400,
-            detail="Invalid or expired reset link. Please request a new one."
+            detail="Invalid or expired reset link. Please request a new one.",
         )
 
-    result = await db.execute(
-        select(UserAuth).where(UserAuth.email == email)
-    )
+    result = await db.execute(select(UserAuth).where(UserAuth.email == email))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -187,8 +194,7 @@ async def reset_password(
     # Validate new password meets requirements (reuse existing schema validation)
     if len(data.new_password) < 8:
         raise HTTPException(
-            status_code=422,
-            detail="Password must be at least 8 characters"
+            status_code=422, detail="Password must be at least 8 characters"
         )
 
     user.password = generate_password_hash(data.new_password)
