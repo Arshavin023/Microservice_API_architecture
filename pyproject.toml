@@ -1,0 +1,25 @@
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+exclude = ["tests/", "migrations/", "alembic/", "venv/", ".venv/"]
+
+[[tool.mypy.overrides]]
+module = "services.notification.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "services.shipping.*"
+disallow_untyped_defs = false
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+exclude = '''
+/(
+    migrations
+    | alembic
+    | \.venv
+    | venv
+)/
+'''
