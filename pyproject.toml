@@ -1,25 +1,15 @@
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 ignore_missing_imports = true
-exclude = ["tests/", "migrations/", "alembic/", "venv/", ".venv/"]
+exclude = ["tests/", "migrations/", "alembic/"]
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+python_executable = "pizzasaleapi_venv/bin/python"
 
 [[tool.mypy.overrides]]
-module = "services.notification.*"
+module = "notification-service.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = "services.shipping.*"
+module = "shipping-service.*"
 disallow_untyped_defs = false
-
-[tool.black]
-line-length = 88
-target-version = ["py311"]
-exclude = '''
-/(
-    migrations
-    | alembic
-    | \.venv
-    | venv
-)/
-'''
