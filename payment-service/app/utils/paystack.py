@@ -1,6 +1,7 @@
 import os
 import httpx
 from decimal import Decimal
+from typing import Any, cast
 
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 if not PAYSTACK_SECRET_KEY:
@@ -21,11 +22,8 @@ class PaystackError(Exception):
 
 
 async def initialize_transaction(
-    email: str,
-    amount_ngn: Decimal,
-    order_id: str,
-    reference: str,
-) -> dict:
+    email: str, amount_ngn: Decimal, order_id: str, reference: str,
+    ) -> dict[str, Any]:
     """
     Initialize a Paystack transaction.
     Returns { authorization_url, reference, access_code }
@@ -61,10 +59,10 @@ async def initialize_transaction(
             f"Paystack initialization failed: {data.get('message', 'unknown error')}"
         )
 
-    return data["data"]
+    return cast(dict[str, Any], data["data"])
 
 
-async def verify_transaction(reference: str) -> dict:
+async def verify_transaction(reference: str) -> dict[str, Any]:
     """
     Verify a Paystack transaction by reference.
     Returns the full transaction data from Paystack.
@@ -83,4 +81,4 @@ async def verify_transaction(reference: str) -> dict:
             f"Paystack verification failed: {data.get('message', 'unknown error')}"
         )
 
-    return data["data"]
+    return cast(dict[str, Any], data["data"])

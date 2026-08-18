@@ -3,7 +3,7 @@ import logging
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-
+from typing import Any
 from app.models.payment import Payment, PaymentStatus
 from app.utils.paystack import initialize_transaction, verify_transaction, PaystackError
 from app.utils.events import publish_payment_succeeded, publish_payment_failed
@@ -16,11 +16,7 @@ class PaymentService:
 
     @staticmethod
     async def initialize(
-        db: AsyncSession,
-        order_id: str,
-        user_id: str,
-        email: str,
-        amount_ngn: Decimal,
+    db: AsyncSession, order_id: str, user_id: str, email: str, amount_ngn: Decimal,
     ) -> Payment:
         """
         Initialize a Paystack transaction and store a pending payment record.
@@ -42,22 +38,23 @@ class PaymentService:
             raise
 
         payment = Payment(
-            order_id=uuid.UUID(order_id),
-            user_id=uuid.UUID(user_id),
-            amount=amount_ngn,
+            order_id=uuid.UUID(order_id),  # type: ignore[arg-type]
+            user_id=uuid.UUID(user_id),  # type: ignore[arg-type]
+            amount=amount_ngn,  # type: ignore[arg-type]
             currency="NGN",
             status=PaymentStatus.pending,
             paystack_reference=paystack_data["reference"],
             authorization_url=paystack_data["authorization_url"],
             paystack_response=paystack_data,
         )
+        
         db.add(payment)
         await db.commit()
         await db.refresh(payment)
         return payment
 
     @staticmethod
-    async def handle_webhook(db: AsyncSession, event: str, data: dict) -> None:
+    async def handle_webhook(db: AsyncSession, event: str, data: dict[str, Any]) -> None:
         """
         Process a Paystack webhook event.
         Only charge.success and charge.failure are handled — all other

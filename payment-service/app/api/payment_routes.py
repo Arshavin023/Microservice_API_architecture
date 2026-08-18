@@ -3,12 +3,17 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-
+from typing import Any, cast
+from uuid import UUID
+from decimal import Decimal
+from app.models.payment import Payment, PaymentStatus
 from app.db.session import get_db, get_session_factory
 from app.schemas.payment_schema import (
     InitializePaymentRequest,
     InitializePaymentResponse,
     PaymentResponse,
+    PaymentStatusEnum,  # add this import — check exact name in payment_schema.py
+
 )
 from app.services.payment_service import PaymentService
 from app.utils.paystack import PaystackError
@@ -22,11 +27,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 async def initialize_payment(
     data: InitializePaymentRequest,
     db: AsyncSession = Depends(get_db),
-):
-    """
-    Called by order-service at checkout to initialize a Paystack transaction.
-    Returns the authorization_url to redirect the user to Paystack's payment page.
-    """
+) -> InitializePaymentResponse:
     try:
         payment = await PaymentService.initialize(
             db=db,
@@ -39,37 +40,16 @@ async def initialize_payment(
         raise HTTPException(status_code=502, detail=str(e))
 
     return InitializePaymentResponse(
-        payment_id=payment.id,
-        order_id=payment.order_id,
-        authorization_url=payment.authorization_url,
-        reference=payment.paystack_reference,
-        amount=payment.amount,
-        currency=payment.currency,
-        status=payment.status,
+        payment_id=cast(UUID, payment.id),
+        order_id=cast(UUID, payment.order_id),
+        authorization_url=cast(str, payment.authorization_url),
+        reference=cast(str, payment.paystack_reference),
+        amount=cast(Decimal, payment.amount),
+        currency=cast(str, payment.currency),
+        status=PaymentStatusEnum(cast(PaymentStatus, payment.status).value),
     )
 
-
-async def _process_webhook_in_background(event: str, data: dict) -> None:
-    """
-    Runs after the HTTP response has already been sent to Paystack.
-
-    This is the structurally correct fix for webhook handling: Paystack
-    times out each delivery attempt after 30 seconds and will treat a slow
-    or failed response as a delivery failure, retrying the whole webhook
-    (live: every 3 min for 4 tries, then hourly for 72h; test: hourly for
-    10h). By acknowledging immediately with 200 right after signature
-    verification, we decouple "Paystack got our acknowledgment" from "we
-    finished updating order-service" — the retry-with-backoff against
-    order-service can now take as long as it genuinely needs (within
-    reason) without risking Paystack re-delivering the same webhook and
-    causing duplicate processing.
-
-    Opens its own DB session via get_session_factory() since the
-    request-scoped session from Depends(get_db) is closed by the time
-    this runs. Using the factory function (not a direct import) means
-    tests can monkeypatch get_session_factory() to point at the test
-    database instead of production.
-    """
+async def _process_webhook_in_background(event: str, data: dict[str, Any]) -> None:
     session_factory = get_session_factory()
     async with session_factory() as db:
         try:
@@ -83,7 +63,7 @@ async def paystack_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     x_paystack_signature: Optional[str] = Header(default=None),
-):
+    ) -> dict[str, str]:
     """
     Paystack webhook receiver. Paystack sends charge.success or charge.failure
     events here after a payment attempt.
@@ -129,8 +109,7 @@ async def paystack_webhook(
 async def get_payment_by_order(
     order_id: str,
     db: AsyncSession = Depends(get_db),
-):
-    """Get payment record for a given order."""
+    ) -> Payment:
     payment = await PaymentService.get_payment_by_order(db, order_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found for this order")

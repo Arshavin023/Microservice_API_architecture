@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import pika
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ EXCHANGE_NAME = "payment_events"
 EXCHANGE_TYPE = "topic"
 
 
-def _publish(routing_key: str, message: dict) -> None:
+def _publish(routing_key: str, message: dict[str, Any]) -> None:
     try:
         params = pika.URLParameters(RABBITMQ_URL)
         connection = pika.BlockingConnection(params)
