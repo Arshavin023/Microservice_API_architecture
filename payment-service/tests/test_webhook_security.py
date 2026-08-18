@@ -4,6 +4,7 @@ Unit tests for webhook signature verification (app/utils/webhook.py).
 These test the verify_webhook_signature function directly — no HTTP layer,
 no DB, just the cryptographic verification logic itself.
 """
+
 import os
 import hmac
 import hashlib
@@ -12,7 +13,9 @@ import pytest
 from app.utils.webhook import verify_webhook_signature
 
 # Must match the actual PAYSTACK_SECRET_KEY the container uses.
-TEST_SECRET = os.environ.get("PAYSTACK_SECRET_KEY", "sk_test_paystack_secret_for_testing")
+TEST_SECRET = os.environ.get(
+    "PAYSTACK_SECRET_KEY", "sk_test_paystack_secret_for_testing"
+)
 
 
 def _sign(body: bytes, secret: str = TEST_SECRET) -> str:

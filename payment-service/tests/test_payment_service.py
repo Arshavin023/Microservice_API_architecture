@@ -4,6 +4,7 @@ Unit tests for PaymentService.
 initialize_transaction, verify_transaction, update_order_status, and
 event publishers are all mocked — no real Paystack API or RabbitMQ needed.
 """
+
 import uuid
 import pytest
 from decimal import Decimal
@@ -42,6 +43,7 @@ def _paystack_verify_response(status: str = "success") -> dict:
 
 # ── initialize ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestPaymentServiceInitialize:
 
@@ -49,8 +51,10 @@ class TestPaymentServiceInitialize:
         order_id = _str_uuid()
         user_id = _str_uuid()
 
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.return_value = _paystack_init_response()
 
             payment = await PaymentService.initialize(
@@ -68,8 +72,10 @@ class TestPaymentServiceInitialize:
         assert payment.currency == "NGN"
 
     async def test_stores_paystack_reference(self, db):
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.return_value = _paystack_init_response("PIZZA-XYZ999")
 
             payment = await PaymentService.initialize(
@@ -83,8 +89,10 @@ class TestPaymentServiceInitialize:
         assert payment.paystack_reference == "PIZZA-XYZ999"
 
     async def test_stores_authorization_url(self, db):
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.return_value = _paystack_init_response()
 
             payment = await PaymentService.initialize(
@@ -98,8 +106,10 @@ class TestPaymentServiceInitialize:
         assert payment.authorization_url == "https://checkout.paystack.com/test123"
 
     async def test_raises_paystack_error_on_api_failure(self, db):
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.side_effect = PaystackError("Invalid Email Address")
 
             with pytest.raises(PaystackError):
@@ -113,8 +123,11 @@ class TestPaymentServiceInitialize:
 
     async def test_does_not_persist_on_paystack_failure(self, db):
         from sqlalchemy.future import select
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.side_effect = PaystackError("API error")
 
             with pytest.raises(PaystackError):
@@ -131,6 +144,7 @@ class TestPaymentServiceInitialize:
 
 
 # ── handle_webhook — charge.success ──────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestHandleWebhookSuccess:
@@ -153,11 +167,17 @@ class TestHandleWebhookSuccess:
     async def test_updates_payment_status_to_succeeded(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_succeeded"):
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_succeeded"),
+        ):
             mock_verify.return_value = _paystack_verify_response("success")
 
             await PaymentService.handle_webhook(
@@ -170,11 +190,17 @@ class TestHandleWebhookSuccess:
     async def test_re_verifies_with_paystack_api(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_succeeded"):
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_succeeded"),
+        ):
             mock_verify.return_value = _paystack_verify_response("success")
 
             await PaymentService.handle_webhook(
@@ -186,11 +212,17 @@ class TestHandleWebhookSuccess:
     async def test_calls_order_service_with_paid_status(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock) as mock_update, \
-             patch("app.services.payment_service.publish_payment_succeeded"):
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ) as mock_update,
+            patch("app.services.payment_service.publish_payment_succeeded"),
+        ):
             mock_verify.return_value = _paystack_verify_response("success")
 
             await PaymentService.handle_webhook(
@@ -202,11 +234,17 @@ class TestHandleWebhookSuccess:
     async def test_publishes_payment_succeeded_event(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_succeeded") as mock_pub:
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_succeeded") as mock_pub,
+        ):
             mock_verify.return_value = _paystack_verify_response("success")
 
             await PaymentService.handle_webhook(
@@ -218,11 +256,17 @@ class TestHandleWebhookSuccess:
     async def test_does_not_update_if_verification_returns_non_success(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock) as mock_update, \
-             patch("app.services.payment_service.publish_payment_succeeded"):
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ) as mock_update,
+            patch("app.services.payment_service.publish_payment_succeeded"),
+        ):
             mock_verify.return_value = _paystack_verify_response("failed")
 
             await PaymentService.handle_webhook(
@@ -236,10 +280,16 @@ class TestHandleWebhookSuccess:
     async def test_does_not_update_if_verification_raises(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock) as mock_update:
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ) as mock_update,
+        ):
             mock_verify.side_effect = PaystackError("API timeout")
 
             await PaymentService.handle_webhook(
@@ -252,8 +302,9 @@ class TestHandleWebhookSuccess:
 
     async def test_ignores_unknown_reference(self, db):
         # Should not raise — just log and return
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify:
+        with patch(
+            "app.services.payment_service.verify_transaction", new_callable=AsyncMock
+        ) as mock_verify:
             await PaymentService.handle_webhook(
                 db, "charge.success", {"reference": "UNKNOWN-REF-999"}
             )
@@ -261,14 +312,16 @@ class TestHandleWebhookSuccess:
         mock_verify.assert_not_called()
 
     async def test_ignores_missing_reference(self, db):
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify:
+        with patch(
+            "app.services.payment_service.verify_transaction", new_callable=AsyncMock
+        ) as mock_verify:
             await PaymentService.handle_webhook(db, "charge.success", {})
 
         mock_verify.assert_not_called()
 
 
 # ── handle_webhook — charge.failure ──────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestHandleWebhookFailure:
@@ -291,13 +344,20 @@ class TestHandleWebhookFailure:
     async def test_updates_payment_status_to_failed(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_failed"):
+        with (
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_failed"),
+        ):
             await PaymentService.handle_webhook(
-                db, "charge.failure",
-                {"reference": payment.paystack_reference,
-                 "gateway_response": "Declined"}
+                db,
+                "charge.failure",
+                {
+                    "reference": payment.paystack_reference,
+                    "gateway_response": "Declined",
+                },
             )
 
         await db.refresh(payment)
@@ -306,12 +366,15 @@ class TestHandleWebhookFailure:
     async def test_calls_order_service_with_cancelled_status(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock) as mock_update, \
-             patch("app.services.payment_service.publish_payment_failed"):
+        with (
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ) as mock_update,
+            patch("app.services.payment_service.publish_payment_failed"),
+        ):
             await PaymentService.handle_webhook(
-                db, "charge.failure",
-                {"reference": payment.paystack_reference}
+                db, "charge.failure", {"reference": payment.paystack_reference}
             )
 
         mock_update.assert_called_once_with(str(payment.order_id), "cancelled")
@@ -319,13 +382,20 @@ class TestHandleWebhookFailure:
     async def test_publishes_payment_failed_event(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_failed") as mock_pub:
+        with (
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_failed") as mock_pub,
+        ):
             await PaymentService.handle_webhook(
-                db, "charge.failure",
-                {"reference": payment.paystack_reference,
-                 "gateway_response": "Insufficient funds"}
+                db,
+                "charge.failure",
+                {
+                    "reference": payment.paystack_reference,
+                    "gateway_response": "Insufficient funds",
+                },
             )
 
         mock_pub.assert_called_once()
@@ -333,14 +403,19 @@ class TestHandleWebhookFailure:
     async def test_does_not_call_verify_on_failure(self, db):
         payment = await self._seed_payment(db)
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_failed"):
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_failed"),
+        ):
             await PaymentService.handle_webhook(
-                db, "charge.failure",
-                {"reference": payment.paystack_reference}
+                db, "charge.failure", {"reference": payment.paystack_reference}
             )
 
         mock_verify.assert_not_called()
@@ -348,12 +423,14 @@ class TestHandleWebhookFailure:
 
 # ── handle_webhook — unhandled events ────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestHandleWebhookUnhandledEvents:
 
     async def test_ignores_unknown_event_types(self, db):
-        with patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock) as mock_update:
+        with patch(
+            "app.services.payment_service.update_order_status", new_callable=AsyncMock
+        ) as mock_update:
             await PaymentService.handle_webhook(
                 db, "transfer.success", {"reference": "REF123"}
             )
@@ -362,6 +439,7 @@ class TestHandleWebhookUnhandledEvents:
 
 
 # ── get_payment_by_order ──────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestGetPaymentByOrder:

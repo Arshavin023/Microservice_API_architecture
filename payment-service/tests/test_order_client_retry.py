@@ -6,6 +6,7 @@ failures, and eventual success after retries — no real order-service needed.
 asyncio.sleep is also mocked so tests run instantly instead of waiting
 through the real backoff delays.
 """
+
 import pytest
 import httpx
 from unittest.mock import patch, AsyncMock, MagicMock
@@ -24,8 +25,10 @@ def _mock_response(status_code: int, text: str = "") -> MagicMock:
 class TestUpdateOrderStatusSuccess:
 
     async def test_succeeds_on_first_attempt(self):
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             mock_patch.return_value = _mock_response(200)
 
             result = await update_order_status("order-123", "paid")
@@ -35,8 +38,10 @@ class TestUpdateOrderStatusSuccess:
         mock_sleep.assert_not_called()
 
     async def test_calls_correct_endpoint_and_payload(self):
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock_patch.return_value = _mock_response(200)
 
             await update_order_status("order-456", "cancelled")
@@ -50,8 +55,10 @@ class TestUpdateOrderStatusSuccess:
 class TestUpdateOrderStatusRetry:
 
     async def test_succeeds_after_one_transient_failure(self):
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             # First call: 500 error. Second call: success.
             mock_patch.side_effect = [
                 _mock_response(500, "Internal Server Error"),
@@ -65,8 +72,10 @@ class TestUpdateOrderStatusRetry:
         mock_sleep.assert_called_once()
 
     async def test_succeeds_after_two_transient_failures(self):
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             mock_patch.side_effect = [
                 _mock_response(503, "Service Unavailable"),
                 _mock_response(500, "Internal Server Error"),
@@ -82,8 +91,10 @@ class TestUpdateOrderStatusRetry:
     async def test_retries_use_exponential_backoff(self):
         from app.utils.order_client import BASE_DELAY_SECONDS
 
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             mock_patch.side_effect = [
                 _mock_response(500),
                 _mock_response(500),
@@ -98,8 +109,10 @@ class TestUpdateOrderStatusRetry:
         assert delays == expected
 
     async def test_recovers_from_network_error(self):
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock_patch.side_effect = [
                 httpx.ConnectError("Connection refused"),
                 _mock_response(200),
@@ -115,8 +128,10 @@ class TestUpdateOrderStatusRetry:
 class TestUpdateOrderStatusExhaustedRetries:
 
     async def test_returns_false_after_max_retries_all_failing(self):
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock_patch.return_value = _mock_response(500, "Internal Server Error")
 
             result = await update_order_status("order-fail", "paid")
@@ -125,8 +140,10 @@ class TestUpdateOrderStatusExhaustedRetries:
         assert mock_patch.call_count == MAX_RETRIES
 
     async def test_returns_false_when_order_service_always_unreachable(self):
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock_patch.side_effect = httpx.ConnectError("Connection refused")
 
             result = await update_order_status("order-unreachable", "paid")
@@ -136,8 +153,10 @@ class TestUpdateOrderStatusExhaustedRetries:
 
     async def test_does_not_retry_beyond_max_retries(self):
         """Even if every attempt fails, we must not retry forever."""
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             mock_patch.return_value = _mock_response(500)
 
             await update_order_status("order-cap", "paid")
@@ -148,8 +167,11 @@ class TestUpdateOrderStatusExhaustedRetries:
 
     async def test_logs_critical_on_exhausted_retries(self, caplog):
         import logging
-        with patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch, \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+
+        with (
+            patch("httpx.AsyncClient.patch", new_callable=AsyncMock) as mock_patch,
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock_patch.return_value = _mock_response(500, "boom")
 
             with caplog.at_level(logging.ERROR):

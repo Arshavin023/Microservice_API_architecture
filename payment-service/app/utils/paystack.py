@@ -16,6 +16,7 @@ HEADERS = {
 
 class PaystackError(Exception):
     """Raised when Paystack API returns an error."""
+
     pass
 
 

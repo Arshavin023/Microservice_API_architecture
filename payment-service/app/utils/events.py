@@ -45,21 +45,31 @@ def _publish(routing_key: str, message: dict) -> None:
         logger.error(f"Failed to publish {routing_key}: {e}")
 
 
-def publish_payment_succeeded(order_id: str, user_id: str, amount: str, reference: str) -> None:
-    _publish("payment.succeeded", {
-        "event": "payment.succeeded",
-        "order_id": order_id,
-        "user_id": user_id,
-        "amount": amount,
-        "reference": reference,
-    })
+def publish_payment_succeeded(
+    order_id: str, user_id: str, amount: str, reference: str
+) -> None:
+    _publish(
+        "payment.succeeded",
+        {
+            "event": "payment.succeeded",
+            "order_id": order_id,
+            "user_id": user_id,
+            "amount": amount,
+            "reference": reference,
+        },
+    )
 
 
-def publish_payment_failed(order_id: str, user_id: str, reference: str, reason: str) -> None:
-    _publish("payment.failed", {
-        "event": "payment.failed",
-        "order_id": order_id,
-        "user_id": user_id,
-        "reference": reference,
-        "reason": reason,
-    })
+def publish_payment_failed(
+    order_id: str, user_id: str, reference: str, reason: str
+) -> None:
+    _publish(
+        "payment.failed",
+        {
+            "event": "payment.failed",
+            "order_id": order_id,
+            "user_id": user_id,
+            "reference": reference,
+            "reason": reason,
+        },
+    )

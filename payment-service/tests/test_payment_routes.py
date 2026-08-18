@@ -5,6 +5,7 @@ Paystack API calls, order_client, and event publishers are all mocked.
 Webhook signature is computed correctly using the test secret so security
 tests prove the real verification logic works.
 """
+
 import json
 import uuid
 import os
@@ -23,7 +24,9 @@ ORDER_URL = "/payments/order"
 
 # Must match the actual PAYSTACK_SECRET_KEY the container uses —
 # webhook.py reads it at import time so we can't override it in tests.
-TEST_SECRET = os.environ.get("PAYSTACK_SECRET_KEY", "sk_test_paystack_secret_for_testing")
+TEST_SECRET = os.environ.get(
+    "PAYSTACK_SECRET_KEY", "sk_test_paystack_secret_for_testing"
+)
 
 
 def new_uuid() -> uuid.UUID:
@@ -53,29 +56,34 @@ def _paystack_init_data(reference: str = "PIZZA-ROUTE123") -> dict:
 
 # ── POST /payments/initialize ─────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestInitializePayment:
 
     def _payload(self, **overrides):
         base = {
             "order_id": str(new_uuid()),
-            "user_id":  str(new_uuid()),
-            "email":    "test@example.com",
-            "amount":   "14.99",
+            "user_id": str(new_uuid()),
+            "email": "test@example.com",
+            "amount": "14.99",
         }
         return {**base, **overrides}
 
     async def test_initialize_returns_201(self, client, db):
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.return_value = _paystack_init_data()
             resp = await client.post(INITIALIZE_URL, json=self._payload())
 
         assert resp.status_code == 201
 
     async def test_initialize_returns_authorization_url(self, client, db):
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.return_value = _paystack_init_data()
             resp = await client.post(INITIALIZE_URL, json=self._payload())
 
@@ -84,8 +92,10 @@ class TestInitializePayment:
         assert data["status"] == "pending"
 
     async def test_initialize_returns_reference(self, client, db):
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.return_value = _paystack_init_data("PIZZA-MYREF")
             resp = await client.post(INITIALIZE_URL, json=self._payload())
 
@@ -104,8 +114,10 @@ class TestInitializePayment:
         assert resp.status_code == 422
 
     async def test_initialize_paystack_error_returns_502(self, client, db):
-        with patch("app.services.payment_service.initialize_transaction",
-                   new_callable=AsyncMock) as mock_init:
+        with patch(
+            "app.services.payment_service.initialize_transaction",
+            new_callable=AsyncMock,
+        ) as mock_init:
             mock_init.side_effect = PaystackError("Invalid Email Address")
             resp = await client.post(INITIALIZE_URL, json=self._payload())
 
@@ -114,6 +126,7 @@ class TestInitializePayment:
 
 
 # ── POST /payments/webhook — security ────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestWebhookSecurity:
@@ -175,6 +188,7 @@ class TestWebhookSecurity:
 
 # ── POST /payments/webhook — processing ──────────────────────────
 
+
 @pytest.mark.asyncio
 class TestWebhookProcessing:
 
@@ -208,11 +222,17 @@ class TestWebhookProcessing:
         payment = await self._seed_payment(db, "PIZZA-SUCC")
         body = _webhook_body("charge.success", "PIZZA-SUCC")
 
-        with patch("app.services.payment_service.verify_transaction",
-                   new_callable=AsyncMock) as mock_verify, \
-             patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_succeeded"):
+        with (
+            patch(
+                "app.services.payment_service.verify_transaction",
+                new_callable=AsyncMock,
+            ) as mock_verify,
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_succeeded"),
+        ):
             mock_verify.return_value = {"status": "success", "reference": "PIZZA-SUCC"}
             resp = await self._post_webhook(client, body)
 
@@ -222,12 +242,17 @@ class TestWebhookProcessing:
 
     async def test_charge_failure_updates_payment_to_failed(self, client, db):
         payment = await self._seed_payment(db, "PIZZA-FAIL")
-        body = _webhook_body("charge.failure", "PIZZA-FAIL",
-                             gateway_response="Declined")
+        body = _webhook_body(
+            "charge.failure", "PIZZA-FAIL", gateway_response="Declined"
+        )
 
-        with patch("app.services.payment_service.update_order_status",
-                   new_callable=AsyncMock), \
-             patch("app.services.payment_service.publish_payment_failed"):
+        with (
+            patch(
+                "app.services.payment_service.update_order_status",
+                new_callable=AsyncMock,
+            ),
+            patch("app.services.payment_service.publish_payment_failed"),
+        ):
             resp = await self._post_webhook(client, body)
 
         assert resp.status_code == 200
@@ -249,8 +274,10 @@ class TestWebhookProcessing:
         body = _webhook_body("charge.success", "PIZZA-INTERNAL-ERR")
         sig = _sign(body)
 
-        with patch("app.services.payment_service.PaymentService.handle_webhook",
-                   new_callable=AsyncMock) as mock_handle:
+        with patch(
+            "app.services.payment_service.PaymentService.handle_webhook",
+            new_callable=AsyncMock,
+        ) as mock_handle:
             mock_handle.side_effect = Exception("unexpected internal error")
 
             resp = await client.post(
@@ -266,6 +293,7 @@ class TestWebhookProcessing:
 
 
 # ── GET /payments/order/{order_id} ───────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestGetPaymentByOrder:
@@ -293,6 +321,7 @@ class TestGetPaymentByOrder:
 
 
 # ── GET /health ───────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_health_check(client):

@@ -116,7 +116,9 @@ async def paystack_webhook(
     event = payload.get("event")
     data = payload.get("data", {})
 
-    logger.info(f"Received and verified Paystack webhook: {event} — queuing for background processing")
+    logger.info(
+        f"Received and verified Paystack webhook: {event} — queuing for background processing"
+    )
 
     background_tasks.add_task(_process_webhook_in_background, event, data)
 

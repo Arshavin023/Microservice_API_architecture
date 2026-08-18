@@ -6,6 +6,7 @@ with Text for SQLite compatibility — same UUID patching pattern as order-servi
 PAYSTACK_SECRET_KEY is set to a known test value so webhook signature
 tests can compute correct HMAC without hitting the real Paystack API.
 """
+
 import os
 import uuid
 import hmac
@@ -21,7 +22,9 @@ os.environ.setdefault("ORDER_SERVICE_URL", "http://order-service:8000")
 # Do NOT override PAYSTACK_SECRET_KEY — the container already has it from .env
 # and webhook.py reads it at module import time. We read it back here so
 # our test signatures match what verify_webhook_signature computes.
-TEST_SECRET = os.environ.get("PAYSTACK_SECRET_KEY", "sk_test_paystack_secret_for_testing")
+TEST_SECRET = os.environ.get(
+    "PAYSTACK_SECRET_KEY", "sk_test_paystack_secret_for_testing"
+)
 
 from sqlalchemy import String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
@@ -37,6 +40,7 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 # ── SQLite type compatibility ──────────────────────────────────────
+
 
 class UUIDasStr(TypeDecorator):
     impl = String(36)
@@ -54,15 +58,18 @@ class UUIDasStr(TypeDecorator):
 
 class JSONasText(TypeDecorator):
     """Store JSONB as Text in SQLite."""
+
     impl = Text
     cache_ok = True
 
     def process_bind_param(self, value, dialect):
         import json
+
         return json.dumps(value) if value is not None else None
 
     def process_result_value(self, value, dialect):
         import json
+
         try:
             return json.loads(value) if value is not None else None
         except (ValueError, TypeError):
@@ -91,6 +98,7 @@ def _restore_columns(patched):
 
 
 # ── Fixtures ──────────────────────────────────────────────────────
+
 
 @pytest_asyncio.fixture(scope="function")
 async def db():
@@ -155,6 +163,7 @@ async def client(db, monkeypatch):
 
 
 # ── Webhook signature helper ──────────────────────────────────────
+
 
 def make_webhook_signature(body: bytes) -> str:
     """

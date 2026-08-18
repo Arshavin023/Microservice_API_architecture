@@ -106,7 +106,7 @@ class PaymentService:
             await db.commit()
 
             order_id = str(payment.order_id)
-            user_id  = str(payment.user_id)
+            user_id = str(payment.user_id)
 
             await update_order_status(order_id, "paid")
             publish_payment_succeeded(
@@ -123,7 +123,7 @@ class PaymentService:
             await db.commit()
 
             order_id = str(payment.order_id)
-            user_id  = str(payment.user_id)
+            user_id = str(payment.user_id)
 
             await update_order_status(order_id, "cancelled")
             publish_payment_failed(
