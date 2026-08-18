@@ -1,6 +1,7 @@
 import os
 import logging
 import boto3
+from typing import Any
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ if not SES_SENDER:
 _ses_client = None
 
 
-def _get_client():
+def _get_client() -> Any:
     global _ses_client
     if _ses_client is None:
         _ses_client = boto3.client("ses", region_name=AWS_REGION)

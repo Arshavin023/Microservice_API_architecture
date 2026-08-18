@@ -12,7 +12,7 @@ import logging
 import asyncio
 import httpx
 import aio_pika
-
+from typing import Any
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
@@ -26,9 +26,11 @@ USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8000")
 QUEUE_NAME = "notification_service.events"
 
 
-def get_session_factory():
+def get_session_factory() -> Any:
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not set")
     engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
-    return sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    return sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore[call-overload]
 
 
 async def get_user_email(user_id: str) -> str | None:
@@ -36,7 +38,8 @@ async def get_user_email(user_id: str) -> str | None:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{USER_SERVICE_URL}/users/internal/{user_id}")
         if resp.status_code == 200:
-            return resp.json().get("email")
+            email = resp.json().get("email")
+            return str(email) if email is not None else None
         logger.warning(f"user-service returned {resp.status_code} for user {user_id}")
         return None
     except httpx.RequestError as e:
@@ -44,7 +47,7 @@ async def get_user_email(user_id: str) -> str | None:
         return None
 
 
-async def already_sent(session_factory, order_id: str, notification_type: str) -> bool:
+async def already_sent(session_factory: Any, order_id: str, notification_type: str) -> bool:
     from app.models.notification import Notification, NotificationType
     from uuid import UUID
 
@@ -60,22 +63,22 @@ async def already_sent(session_factory, order_id: str, notification_type: str) -
 
 
 async def log_notification(
-    session_factory,
-    order_id,
-    user_id,
-    to_email,
-    notification_type,
-    subject,
-    sent,
-    error_message=None,
-):
+    session_factory: Any,
+    order_id: str,
+    user_id: str,
+    to_email: str,
+    notification_type: str,
+    subject: str,
+    sent: bool,
+    error_message: str | None = None,
+    ) -> None:
     from app.models.notification import Notification, NotificationType
     from uuid import UUID
 
     async with session_factory() as db:
         notif = Notification(
-            order_id=UUID(order_id),
-            user_id=UUID(user_id),
+            order_id=UUID(order_id),  # type: ignore[arg-type]
+            user_id=UUID(user_id),  # type: ignore[arg-type]
             to_email=to_email,
             notification_type=NotificationType(notification_type),
             subject=subject,
@@ -86,7 +89,7 @@ async def log_notification(
         await db.commit()
 
 
-async def handle_payment_succeeded(data: dict, session_factory) -> None:
+async def handle_payment_succeeded(data: dict[str, Any], session_factory: Any) -> None:
     from app.utils.templates import payment_succeeded
     from app.utils.ses import send_email
 
@@ -108,7 +111,7 @@ async def handle_payment_succeeded(data: dict, session_factory) -> None:
     )
 
 
-async def handle_payment_failed(data: dict, session_factory) -> None:
+async def handle_payment_failed(data: dict[str, Any], session_factory: Any) -> None:
     from app.utils.templates import payment_failed
     from app.utils.ses import send_email
 
@@ -129,7 +132,7 @@ async def handle_payment_failed(data: dict, session_factory) -> None:
     )
 
 
-async def handle_shipment_dispatched(data: dict, session_factory) -> None:
+async def handle_shipment_dispatched(data: dict[str, Any], session_factory: Any) -> None:
     from app.utils.templates import shipment_dispatched
     from app.utils.ses import send_email
 
@@ -155,7 +158,7 @@ async def handle_shipment_dispatched(data: dict, session_factory) -> None:
     )
 
 
-async def handle_shipment_delivered(data: dict, session_factory) -> None:
+async def handle_shipment_delivered(data: dict[str, Any], session_factory: Any) -> None:
     from app.utils.templates import shipment_delivered
     from app.utils.ses import send_email
 
@@ -176,7 +179,7 @@ async def handle_shipment_delivered(data: dict, session_factory) -> None:
     )
 
 
-async def handle_delivery_pending(data: dict, session_factory) -> None:
+async def handle_delivery_pending(data: dict[str, Any], session_factory: Any) -> None:
     from app.utils.templates import delivery_pending_confirmation
     from app.utils.ses import send_email
 
@@ -207,7 +210,7 @@ HANDLERS = {
 }
 
 
-async def main():
+async def main() -> None:
     session_factory = get_session_factory()
 
     while True:

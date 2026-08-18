@@ -12,4 +12,4 @@ AsyncSessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,
-)
+    )  # type: ignore[call-overload]

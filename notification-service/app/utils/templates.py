@@ -125,6 +125,8 @@ def delivery_pending_confirmation(order_id: str) -> tuple[str, str, str]:
         f"— Pizzasale"
     )
     return subject, html, text
+
+def shipment_delivered(order_id: str) -> tuple[str, str, str]:
     subject = "🎉 Your order has been delivered!"
     html = f"""
 <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
