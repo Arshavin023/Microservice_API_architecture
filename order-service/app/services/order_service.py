@@ -1,10 +1,11 @@
 import logging
 from decimal import Decimal
 from uuid import UUID
+from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-
+from app.models.cart import CartStatus  # add to imports if not already present
 from app.models.cart import Cart, CartItem
 from app.models.order import Order, OrderItem, OrderStatus
 from app.utils.product_client import get_variant, ProductServiceError
@@ -16,14 +17,19 @@ logger = logging.getLogger(__name__)
 
 class CheckoutError(Exception):
     """User-facing checkout failure — price changed, item unavailable, etc."""
-
     pass
 
-
+@dataclass
+class CheckoutResult:
+    order: Order
+    authorization_url: str | None
+    payment_reference: str | None
+    price_changes: list[dict[str, str | None]]
+    
 class OrderService:
 
     @staticmethod
-    async def checkout(db: AsyncSession, cart: Cart, user_id: UUID) -> Order:
+    async def checkout(db: AsyncSession, cart: Cart, user_id: UUID) -> CheckoutResult:
         """
         The core checkout flow:
         1. Re-verify each cart item's price and availability against product-service.
@@ -92,7 +98,7 @@ class OrderService:
         total = sum(v["live_price"] * v["cart_item"].quantity for v in verified_items)
 
         order = Order(
-            user_id=user_id,
+            user_id=user_id,  # type: ignore[arg-type]
             status=OrderStatus.pending_payment,
             total_amount=total,
         )
@@ -127,7 +133,7 @@ class OrderService:
             )
 
         # Phase 3: mark cart as checked out, all in one transaction.
-        cart.status = "checked_out"
+        cart.status = CartStatus.checked_out
         await db.commit()
 
         # Re-fetch order with items eagerly loaded — db.refresh() doesn't
@@ -159,16 +165,20 @@ class OrderService:
                 email="uchejudennodim@gmail.com",
                 amount=total,
             )
-            order._authorization_url = payment_data.get("authorization_url")
-            order._payment_reference = payment_data.get("reference")
+            auth_url = payment_data.get("authorization_url")
+            payment_ref = payment_data.get("reference")
         except PaymentServiceError as e:
             logger.error(f"Payment initialization failed for order {order.id}: {e}")
-            order._authorization_url = None
-            order._payment_reference = None
+            auth_url = None
+            payment_ref = None
 
-        order._price_changes = price_changes
-        return order
-
+        return CheckoutResult(
+            order=order,
+            authorization_url=auth_url,
+            payment_reference=payment_ref,
+            price_changes=price_changes,
+        )
+    
     @staticmethod
     async def get_order(
         db: AsyncSession, order_id: UUID, user_id: UUID
@@ -188,4 +198,5 @@ class OrderService:
             .where(Order.user_id == user_id)
             .order_by(Order.created_at.desc())
         )
-        return result.scalars().all()
+        return list(result.scalars().all())
+    

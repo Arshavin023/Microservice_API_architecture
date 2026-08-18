@@ -15,7 +15,7 @@ ROUTING_KEY_ORDER_PLACED = "order.placed"
 
 
 def publish_order_placed(
-    order_id: str, user_id: str, total_amount: str, items: list
+    order_id: str, user_id: str, total_amount: str, items: list[dict[str, str]]
 ) -> None:
     """
     Publishes an order.placed event so payment-service (and any future

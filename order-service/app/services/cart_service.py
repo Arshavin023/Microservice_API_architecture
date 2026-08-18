@@ -1,6 +1,7 @@
 import logging
 from decimal import Decimal
 from uuid import UUID
+from typing import cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -25,15 +26,11 @@ class CartService:
     async def get_or_create_cart(db: AsyncSession, user_id: UUID) -> Cart:
         cart = await CartService.get_active_cart(db, user_id)
         if not cart:
-            cart = Cart(user_id=user_id)
+            cart = Cart(user_id=user_id)  # type: ignore[arg-type]
             db.add(cart)
             await db.commit()
-            # Reload with selectinload rather than using db.refresh —
-            # refresh doesn't eagerly load relationships, so accessing
-            # cart.items after refresh would trigger a lazy load, which
-            # raises MissingGreenlet in async SQLAlchemy.
             cart = await CartService.get_active_cart(db, user_id)
-        return cart
+        return cast(Cart, cart)  # fixes line 36 — we know it's non-None right after creation
 
     @staticmethod
     async def add_item(
@@ -57,20 +54,21 @@ class CartService:
         existing = result.scalar_one_or_none()
 
         if existing:
-            existing.quantity += quantity
+            existing.quantity = cast(int, existing.quantity) + quantity
             await db.commit()
             await db.refresh(existing)
             return existing
 
         item = CartItem(
             cart_id=cart.id,
-            product_id=UUID(product_id),
-            variant_id=UUID(variant_id),
+            product_id=UUID(product_id),  # type: ignore[arg-type]
+            variant_id=UUID(variant_id),  # type: ignore[arg-type]
             product_name=product_name,
             size=size,
-            unit_price=unit_price,
+            unit_price=unit_price,  # type: ignore[arg-type]
             quantity=quantity,
         )
+        
         db.add(item)
         await db.commit()
         await db.refresh(item)

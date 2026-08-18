@@ -43,8 +43,7 @@ def get_current_user_id(Authorize: AuthJWT = Depends()) -> UUID:
         raise HTTPException(status_code=422, detail="JWT is missing user_id claim.")
     return UUID(user_id)
 
-
-def require_staff(Authorize: AuthJWT = Depends()):
+def require_staff(Authorize: AuthJWT = Depends()) -> None:
     """Enforces staff-only access on order-service routes."""
     Authorize.jwt_required()
     claims = Authorize.get_raw_jwt()

@@ -1,5 +1,6 @@
 import os
 import httpx
+from typing import Optional, Any
 from typing import Optional
 
 PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://product-service:8000")
@@ -10,8 +11,7 @@ class ProductServiceError(Exception):
 
     pass
 
-
-async def get_variant(product_id: str, variant_id: str) -> Optional[dict]:
+async def get_variant(product_id: str, variant_id: str) -> Optional[dict[str, Any]]:
     """
     Fetches a product from product-service and returns the matching
     variant, or None if the product/variant doesn't exist or is unavailable.

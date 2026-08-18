@@ -1,6 +1,7 @@
 import os
 import httpx
 import logging
+from typing import Any, cast
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
@@ -10,16 +11,15 @@ PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8
 
 class PaymentServiceError(Exception):
     """Raised when payment-service is unreachable or returns an error."""
-
     pass
 
-
+    
 async def initialize_payment(
     order_id: str,
     user_id: str,
     email: str,
     amount: Decimal,
-) -> dict:
+) -> dict[str, Any]:
     """
     Call payment-service to initialize a Paystack transaction.
     Returns { payment_id, authorization_url, reference }
@@ -43,4 +43,4 @@ async def initialize_payment(
             f"payment-service returned {resp.status_code}: {resp.text}"
         )
 
-    return resp.json()
+    return cast(dict[str, Any], resp.json())

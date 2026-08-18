@@ -11,6 +11,7 @@ SQLAlchemy's asyncpg driver.
 
 import os
 import json
+from typing import Any
 import logging
 import asyncio
 import aio_pika
@@ -27,12 +28,13 @@ EXCHANGE_NAME = "shipping_events"
 QUEUE_NAME = "order_service.shipping_events"
 
 
-def get_session_factory():
+def get_session_factory() -> Any:
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not set")
     engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
-    return sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    return sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore[call-overload]
 
-
-async def handle_shipment_dispatched(data: dict, session_factory) -> None:
+async def handle_shipment_dispatched(data: dict[str, Any], session_factory: Any) -> None:
     order_id = data.get("order_id")
     if not order_id:
         logger.warning("shipment.dispatched missing order_id")
@@ -56,7 +58,7 @@ async def handle_shipment_dispatched(data: dict, session_factory) -> None:
         )
 
 
-async def handle_shipment_delivered(data: dict, session_factory) -> None:
+async def handle_shipment_delivered(data: dict[str, Any], session_factory: Any) -> None:
     order_id = data.get("order_id")
     if not order_id:
         logger.warning("shipment.delivered missing order_id")
@@ -80,7 +82,7 @@ async def handle_shipment_delivered(data: dict, session_factory) -> None:
         )
 
 
-async def handle_delivery_pending(data: dict, session_factory) -> None:
+async def handle_delivery_pending(data: dict[str, Any], session_factory: Any) -> None:
     """Order: shipped → awaiting_confirmation (customer must confirm or auto-confirms in 2hrs)."""
     order_id = data.get("order_id")
     if not order_id:
@@ -112,7 +114,7 @@ HANDLERS = {
 }
 
 
-async def main():
+async def main() -> None:
     session_factory = get_session_factory()
 
     while True:
