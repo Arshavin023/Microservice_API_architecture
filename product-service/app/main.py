@@ -24,6 +24,6 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException) -> JSONRe
         content={"detail": exc.message},
     )
 
-
+@app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
