@@ -578,3 +578,46 @@ Exit code: 0
 Reconciliation: checked 13 terminal payments — no mismatches found.
 Exit code: 0
 
+── 2026-08-18T05:59:01Z ──────────────────────────────────────
+Reconciliation: checked 14 terminal payments — no mismatches found.
+Exit code: 0
+
+── 2026-08-18T06:00:01Z ──────────────────────────────────────
+Reconciliation: checked 14 terminal payments — no mismatches found.
+Exit code: 0
+
+── 2026-08-18T06:59:01Z ──────────────────────────────────────
+Reconciliation: found 1 mismatch(es) out of 15 terminal payments:
+
+  order_id=01a013a2-6cc2-7bd5-8025-63d175582689
+    payment_status=succeeded (ref: PIZZA-3D1D1A57B09445A7)
+    expected order status: paid
+    actual order status:   awaiting_confirmation
+
+Applying fixes...
+
+  FIXED: order 01a013a2-6cc2-7bd5-8025-63d175582689 -> paid
+
+All 1 mismatch(es) fixed successfully.
+Exit code: 0
+
+── 2026-08-18T07:00:01Z ──────────────────────────────────────
+Reconciliation: checked 15 terminal payments — no mismatches found.
+Exit code: 0
+
+── 2026-08-18T07:59:01Z ──────────────────────────────────────
+Reconciliation: checked 18 terminal payments — no mismatches found.
+Exit code: 0
+
+── 2026-08-18T08:00:01Z ──────────────────────────────────────
+Reconciliation: checked 18 terminal payments — no mismatches found.
+Exit code: 0
+
+── 2026-08-18T09:59:01Z ──────────────────────────────────────
+Reconciliation: checked 20 terminal payments — no mismatches found.
+Exit code: 0
+
+── 2026-08-18T10:00:02Z ──────────────────────────────────────
+Reconciliation: checked 21 terminal payments — no mismatches found.
+Exit code: 0
+

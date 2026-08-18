@@ -62,6 +62,24 @@ def publish_shipment_dispatched(
     })
 
 
+def publish_delivery_pending(
+    shipment_id: str,
+    order_id: str,
+    user_id: str,
+) -> None:
+    """
+    Published when staff notifies the customer that their order has
+    been delivered by the rider. Customer must confirm receipt within
+    2 hours, after which the cron job auto-confirms.
+    """
+    _publish("shipment.delivery_pending", {
+        "event":       "shipment.delivery_pending",
+        "shipment_id": shipment_id,
+        "order_id":    order_id,
+        "user_id":     user_id,
+    })
+
+
 def publish_shipment_delivered(
     shipment_id: str,
     order_id: str,

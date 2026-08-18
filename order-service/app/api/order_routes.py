@@ -1,11 +1,12 @@
 # from fastapi import APIRouter, Depends, HTTPException
 # from sqlalchemy.ext.asyncio import AsyncSession
 # from sqlalchemy.future import select
+# from sqlalchemy.orm import selectinload
 # from uuid import UUID
 # from pydantic import BaseModel
 
 # from app.db.session import get_db
-# from app.core.auth import get_current_user_id
+# from app.core.auth import get_current_user_id, require_staff
 # from app.models.order import Order, OrderStatus
 # from app.schemas.order_schema import (
 #     CartItemAdd, CartResponse, OrderResponse
@@ -16,11 +17,13 @@
 
 # router = APIRouter(tags=["Orders"])
 
+
 # class StatusUpdate(BaseModel):
 #     status: str
 
 
 # def _parse_uuid(value: str, field: str = "id") -> UUID:
+#     """Cast a path parameter string to UUID, returning 422 on malformed input."""
 #     try:
 #         return UUID(value)
 #     except ValueError:
@@ -45,16 +48,9 @@
 #     user_id: UUID = Depends(get_current_user_id),
 #     db: AsyncSession = Depends(get_db),
 # ):
-#     """
-#     Add an item to the cart. The client is responsible for providing
-#     correct product/variant details (name, size, price) since it already
-#     fetched them from product-service when the user browsed. Prices are
-#     re-verified against product-service at checkout.
-#     """
 #     cart = await CartService.get_or_create_cart(db, user_id)
 #     await CartService.add_item(
-#         db,
-#         cart,
+#         db, cart,
 #         product_id=str(item.product_id),
 #         variant_id=str(item.variant_id),
 #         product_name=item.product_name,
@@ -72,10 +68,11 @@
 #     user_id: UUID = Depends(get_current_user_id),
 #     db: AsyncSession = Depends(get_db),
 # ):
+#     uid = _parse_uuid(item_id, "item_id")
 #     cart = await CartService.get_active_cart(db, user_id)
 #     if not cart:
 #         raise HTTPException(status_code=404, detail="No active cart found")
-#     removed = await CartService.remove_item(db, cart, item_id)
+#     removed = await CartService.remove_item(db, cart, uid)
 #     if not removed:
 #         raise HTTPException(status_code=404, detail="Item not found in cart")
 
@@ -87,23 +84,17 @@
 #     user_id: UUID = Depends(get_current_user_id),
 #     db: AsyncSession = Depends(get_db),
 # ):
-#     """
-#     Verify all cart items against product-service, lock prices,
-#     create an order, and publish order.placed event.
-#     """
 #     cart = await CartService.get_active_cart(db, user_id)
 #     if not cart:
 #         raise HTTPException(status_code=400, detail="No active cart to checkout")
 #     if not cart.items:
 #         raise HTTPException(status_code=400, detail="Cart is empty")
-
 #     try:
 #         order = await OrderService.checkout(db, cart, user_id)
 #     except CheckoutError as e:
 #         raise HTTPException(status_code=400, detail=str(e))
 #     except ProductServiceError as e:
 #         raise HTTPException(status_code=503, detail=str(e))
-
 #     return OrderResponse(
 #         id=order.id,
 #         status=order.status,
@@ -139,6 +130,31 @@
 #     ]
 
 
+# # ─── Staff: all orders ────────────────────────────────────────────
+# # MUST come before /orders/{order_id} — FastAPI matches routes in order,
+# # and "all" would otherwise be parsed as a UUID parameter (causing 422).
+
+# @router.get("/orders/all", response_model=list[OrderResponse])
+# async def get_all_orders(
+#     db: AsyncSession = Depends(get_db),
+#     _: None = Depends(require_staff),
+# ):
+#     """Staff-only — returns all active orders across all users."""
+#     result = await db.execute(
+#         select(Order)
+#         .where(Order.status.in_([
+#             OrderStatus.paid,
+#             OrderStatus.shipped,
+#             OrderStatus.awaiting_confirmation,
+#         ]))
+#         .options(selectinload(Order.items))
+#         .order_by(Order.created_at.desc())
+#     )
+#     return result.scalars().all()
+
+
+# # ─── Single order ─────────────────────────────────────────────────
+
 # @router.get("/orders/{order_id}", response_model=OrderResponse)
 # async def get_order(
 #     order_id: str,
@@ -166,36 +182,55 @@
 #     update: StatusUpdate,
 #     db: AsyncSession = Depends(get_db),
 # ):
-#     """
-#     Internal endpoint — called by payment-service after webhook confirmation.
-#     No JWT required since this is service-to-service on the internal Docker
-#     network, not exposed to the public internet.
-#     """
+#     """Internal — called by payment-service and workers. No JWT required."""
 #     uid = _parse_uuid(order_id, "order_id")
-
 #     try:
 #         new_status = OrderStatus(update.status)
 #     except ValueError:
 #         raise HTTPException(status_code=400, detail=f"Invalid status: {update.status}")
-
 #     result = await db.execute(select(Order).where(Order.id == uid))
 #     order = result.scalar_one_or_none()
-
 #     if not order:
 #         raise HTTPException(status_code=404, detail="Order not found")
-
 #     order.status = new_status
 #     await db.commit()
 #     return {"order_id": order_id, "status": new_status}
 
+
+# @router.patch("/orders/{order_id}/confirm-delivery", response_model=OrderResponse)
+# async def confirm_delivery(
+#     order_id: str,
+#     db: AsyncSession = Depends(get_db),
+#     user_id: UUID = Depends(get_current_user_id),
+# ):
+#     """Customer confirms they received their order."""
+#     uid = _parse_uuid(order_id, "order_id")
+#     result = await db.execute(
+#         select(Order).where(Order.id == uid, Order.user_id == user_id)
+#     )
+#     order = result.scalar_one_or_none()
+#     if not order:
+#         raise HTTPException(status_code=404, detail="Order not found")
+#     if order.status.value != "awaiting_confirmation":
+#         raise HTTPException(
+#             status_code=409,
+#             detail=f"Order cannot be confirmed — current status is '{order.status.value}'"
+#         )
+#     order.status = OrderStatus.delivered
+#     await db.commit()
+#     await db.refresh(order)
+#     return order
+
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from uuid import UUID
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.core.auth import get_current_user_id
+from app.core.auth import get_current_user_id, require_staff
 from app.models.order import Order, OrderStatus
 from app.schemas.order_schema import (
     CartItemAdd, CartResponse, OrderResponse
@@ -237,16 +272,9 @@ async def add_to_cart(
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Add an item to the cart. The client is responsible for providing
-    correct product/variant details (name, size, price) since it already
-    fetched them from product-service when the user browsed. Prices are
-    re-verified against product-service at checkout.
-    """
     cart = await CartService.get_or_create_cart(db, user_id)
     await CartService.add_item(
-        db,
-        cart,
+        db, cart,
         product_id=str(item.product_id),
         variant_id=str(item.variant_id),
         product_name=item.product_name,
@@ -280,23 +308,17 @@ async def checkout(
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Verify all cart items against product-service, lock prices,
-    create an order, and publish order.placed event.
-    """
     cart = await CartService.get_active_cart(db, user_id)
     if not cart:
         raise HTTPException(status_code=400, detail="No active cart to checkout")
     if not cart.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
-
     try:
         order = await OrderService.checkout(db, cart, user_id)
     except CheckoutError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except ProductServiceError as e:
         raise HTTPException(status_code=503, detail=str(e))
-
     return OrderResponse(
         id=order.id,
         status=order.status,
@@ -332,6 +354,29 @@ async def list_orders(
     ]
 
 
+# ─── Staff: all orders ────────────────────────────────────────────
+
+@router.get("/orders/all", response_model=list[OrderResponse])
+async def get_all_orders(
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_staff),
+):
+    """Staff-only — returns all active orders across all users."""
+    result = await db.execute(
+        select(Order)
+        .where(Order.status.in_([
+            OrderStatus.paid,
+            OrderStatus.shipped,
+            OrderStatus.awaiting_confirmation,
+        ]))
+        .options(selectinload(Order.items))
+        .order_by(Order.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+# ─── Single order ─────────────────────────────────────────────────
+
 @router.get("/orders/{order_id}", response_model=OrderResponse)
 async def get_order(
     order_id: str,
@@ -359,24 +404,52 @@ async def update_order_status(
     update: StatusUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Internal endpoint — called by payment-service after webhook confirmation.
-    No JWT required since this is service-to-service on the internal Docker
-    network, not exposed to the public internet.
-    """
+    """Internal — called by payment-service and workers. No JWT required."""
     uid = _parse_uuid(order_id, "order_id")
-
     try:
         new_status = OrderStatus(update.status)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid status: {update.status}")
-
     result = await db.execute(select(Order).where(Order.id == uid))
     order = result.scalar_one_or_none()
-
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-
     order.status = new_status
     await db.commit()
     return {"order_id": order_id, "status": new_status}
+
+
+@router.patch("/orders/{order_id}/confirm-delivery", response_model=OrderResponse)
+async def confirm_delivery(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
+):
+    """Customer confirms they received their order."""
+    uid = _parse_uuid(order_id, "order_id")
+    result = await db.execute(
+        select(Order)
+        .where(Order.id == uid, Order.user_id == user_id)
+        .options(selectinload(Order.items))
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status.value != "awaiting_confirmation":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Order cannot be confirmed — current status is '{order.status.value}'"
+        )
+    order.status = OrderStatus.delivered
+    await db.commit()
+    await db.refresh(order)  # <--- Re-populates expired scalar fields asynchronously
+    
+    return OrderResponse(
+        id=order.id,
+        status=order.status,
+        total_amount=order.total_amount,
+        items=order.items,
+        price_changes=[],
+        created_at=order.created_at,
+        updated_at=order.updated_at,
+    )

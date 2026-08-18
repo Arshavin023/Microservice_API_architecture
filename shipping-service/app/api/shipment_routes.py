@@ -80,20 +80,22 @@ async def dispatch_shipment(
     return shipment
 
 
-@router.patch("/{shipment_id}/deliver", response_model=ShipmentResponse)
-async def deliver_shipment(
+@router.patch("/{shipment_id}/notify-customer", response_model=ShipmentResponse)
+async def notify_customer(
     shipment_id: str,
     data: DeliverShipmentRequest,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_staff),
 ):
     """
-    Staff marks a shipment as delivered — customer received the order.
-    Publishes shipment.delivered → order becomes 'delivered'.
+    Staff notifies customer that rider has delivered the order.
+    Sets shipment to 'delivered', publishes shipment.delivery_pending
+    so order moves to 'awaiting_confirmation' and customer gets an email
+    asking them to confirm receipt. Auto-confirmed by cron after 2 hours.
     """
     uid = _parse_uuid(shipment_id, "shipment_id")
     try:
-        shipment = await ShipmentService.deliver(
+        shipment = await ShipmentService.notify_customer(
             db=db,
             shipment_id=str(uid),
             tracking_note=data.tracking_note,
@@ -125,6 +127,23 @@ async def get_shipment_by_order(
     # Customers can only view their own shipment
     if shipment.user_id != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
+    return shipment
+
+
+@router.get("/order/{order_id}/staff", response_model=ShipmentResponse)
+async def get_shipment_by_order_staff(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_staff),
+):
+    """Staff can look up any shipment by order ID."""
+    uid = _parse_uuid(order_id, "order_id")
+    shipment = await ShipmentService.get_by_order(db, str(uid))
+    if not shipment:
+        raise HTTPException(
+            status_code=404,
+            detail="No shipment found for this order yet",
+        )
     return shipment
 
 

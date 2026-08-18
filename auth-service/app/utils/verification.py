@@ -8,6 +8,9 @@ if not JWT_SECRET:
 VERIFICATION_SALT = "email-verification"
 VERIFICATION_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24  # 24 hours
 
+RESET_SALT = "password-reset"
+RESET_TOKEN_MAX_AGE_SECONDS = 60 * 60  # 1 hour — shorter window for security
+
 _serializer = URLSafeTimedSerializer(JWT_SECRET)
 
 
@@ -26,6 +29,26 @@ def confirm_verification_token(token: str) -> str | None:
             token,
             salt=VERIFICATION_SALT,
             max_age=VERIFICATION_TOKEN_MAX_AGE_SECONDS,
+        )
+    except (BadSignature, SignatureExpired):
+        return None
+
+
+def generate_reset_token(email: str) -> str:
+    """Generate a password reset token valid for 1 hour."""
+    return _serializer.dumps(email, salt=RESET_SALT)
+
+
+def confirm_reset_token(token: str) -> str | None:
+    """
+    Returns the email the reset token was issued for, or None if
+    the token is invalid or expired (1 hour window).
+    """
+    try:
+        return _serializer.loads(
+            token,
+            salt=RESET_SALT,
+            max_age=RESET_TOKEN_MAX_AGE_SECONDS,
         )
     except (BadSignature, SignatureExpired):
         return None

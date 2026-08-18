@@ -32,15 +32,15 @@ function ShipmentCard({ order, shipment, onRefresh }) {
     }
   }
 
-  const deliver = async () => {
+  const notifyCustomer = async () => {
     setWorking(true); setError('')
     try {
-      await shippingApi.deliverShipment(shipment.id, {
+      await shippingApi.notifyCustomer(shipment.id, {
         tracking_note: form.tracking_note || undefined,
       })
       onRefresh()
     } catch (err) {
-      setError(err.response?.data?.detail ?? 'Failed to mark delivered')
+      setError(err.response?.data?.detail ?? 'Failed to notify customer')
     } finally {
       setWorking(false)
     }
@@ -140,10 +140,10 @@ function ShipmentCard({ order, shipment, onRefresh }) {
                   </button>
                 )}
                 {shipment.status === 'dispatched' && (
-                  <button onClick={deliver} disabled={working}
+                  <button onClick={notifyCustomer} disabled={working}
                     className="bg-[#2D6A4F] hover:bg-[#235a40] text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-sm flex items-center gap-1.5 flex-1 justify-center disabled:opacity-50">
                     {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    Mark as delivered
+                    Notify customer to confirm
                   </button>
                 )}
               </div>
@@ -170,17 +170,15 @@ export default function StaffDashboard() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const ordersRes = await ordersApi.listOrders()
-      const active = ordersRes.data.filter(o =>
-        ['paid', 'shipped'].includes(o.status)
-      )
+      const ordersRes = await ordersApi.listAllOrders()
+      const active = ordersRes.data
       setPaidOrders(active)
 
       const shipmentMap = {}
       await Promise.allSettled(
         active.map(async (order) => {
           try {
-            const res = await shippingApi.getShipmentByOrder(order.id)
+            const res = await shippingApi.getShipmentByOrderStaff(order.id)
             shipmentMap[order.id] = res.data
           } catch {
             shipmentMap[order.id] = null

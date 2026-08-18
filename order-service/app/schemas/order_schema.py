@@ -46,6 +46,7 @@ class OrderStatusEnum(str, Enum):
     shipped = "shipped"
     delivered = "delivered"
     cancelled = "cancelled"
+    awaiting_confirmation = "awaiting_confirmation"  # new status added in ord002 migration
 
 
 class OrderItemResponse(BaseModel):

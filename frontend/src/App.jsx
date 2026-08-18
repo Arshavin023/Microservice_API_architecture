@@ -6,6 +6,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Menu from './pages/Menu'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Cart from './pages/Cart'
 import { Orders, OrderDetail } from './pages/Orders'
 import Profile from './pages/Profile'
@@ -33,9 +35,11 @@ function AppShell() {
     <div className="min-h-screen bg-[#FFF8F0]">
       <Navbar cartCount={cartCount} />
       <Routes>
-        <Route path="/"          element={<Menu onCartUpdate={refreshCartCount} />} />
-        <Route path="/login"     element={<Login />} />
-        <Route path="/register"  element={<Register />} />
+        <Route path="/"               element={<Menu onCartUpdate={refreshCartCount} />} />
+        <Route path="/login"          element={<Login />} />
+        <Route path="/register"       element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
         <Route path="/cart"      element={<ProtectedRoute><Cart onCartUpdate={refreshCartCount} /></ProtectedRoute>} />
         <Route path="/orders"    element={<ProtectedRoute><Orders /></ProtectedRoute>} />
         <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />

@@ -21,9 +21,11 @@ api.interceptors.response.use(
 )
 
 export const authApi = {
-  register:  (data) => api.post('/auth/register', data),
-  login:     (data) => api.post('/auth/login', data),
-  refresh:   ()     => api.post('/auth/refresh'),
+  register:       (data) => api.post('/auth/register', data),
+  login:          (data) => api.post('/auth/login', data),
+  refresh:        ()     => api.post('/auth/refresh'),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword:  (data) => api.post('/auth/reset-password', data),
 }
 
 export const usersApi = {
@@ -40,12 +42,14 @@ export const productsApi = {
 }
 
 export const ordersApi = {
-  getCart:        ()       => api.get('/orders/cart'),
-  addToCart:      (data)   => api.post('/orders/cart/items', data),
-  removeFromCart: (itemId) => api.delete(`/orders/cart/items/${itemId}`),
-  checkout:       ()       => api.post('/orders/checkout'),
-  listOrders:     ()       => api.get('/orders/orders'),
-  getOrder:       (id)     => api.get(`/orders/orders/${id}`),
+  getCart:          ()       => api.get('/orders/cart'),
+  addToCart:        (data)   => api.post('/orders/cart/items', data),
+  removeFromCart:   (itemId) => api.delete(`/orders/cart/items/${itemId}`),
+  checkout:         ()       => api.post('/orders/checkout'),
+  listOrders:       ()       => api.get('/orders/orders'),
+  listAllOrders:    ()       => api.get('/orders/orders/all'),
+  getOrder:         (id)     => api.get(`/orders/orders/${id}`),
+  confirmDelivery:  (id)     => api.patch(`/orders/orders/${id}/confirm-delivery`),
 }
 
 export const paymentsApi = {
@@ -53,11 +57,13 @@ export const paymentsApi = {
 }
 
 export const shippingApi = {
-  getShipmentByOrder: (orderId) => api.get(`/shipping/shipments/order/${orderId}`),
-  createShipment:     (data)    => api.post('/shipping/shipments', data),
+  getShipmentByOrderStaff: (orderId) => api.get(`/shipping/shipments/order/${orderId}/staff`),
+  getShipmentByOrder: (orderId)  => api.get(`/shipping/shipments/order/${orderId}`),
+  createShipment:     (data)     => api.post('/shipping/shipments', data),
   dispatchShipment:   (id, data) => api.patch(`/shipping/shipments/${id}/dispatch`, data),
+  notifyCustomer:     (id, data) => api.patch(`/shipping/shipments/${id}/notify-customer`, data),
   deliverShipment:    (id, data) => api.patch(`/shipping/shipments/${id}/deliver`, data),
-  getShipment:        (id)      => api.get(`/shipping/shipments/${id}`),
+  getShipment:        (id)       => api.get(`/shipping/shipments/${id}`),
 }
 
 export default api

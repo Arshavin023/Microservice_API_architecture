@@ -68,27 +68,31 @@ This project follows eight complementary patterns:
      ▼                                          shipment.delivered                                          │
 ┌─────────────────────┐   ┌──────────────────────────────────────┐   ┌──────────────────────────────────────┘
 │ user-service-worker │   │   order-service-worker               │   │   shipping-service (port 8006)
-│ (aio-pika consumer) │   │   (aio-pika consumer)                │   │   staff: POST /shipments
-│ creates UserProfile │   │   shipment.dispatched                │   │         PATCH /{id}/dispatch
-│ idempotently        │   │     → order: paid → shipped          │   │         PATCH /{id}/deliver
-└──────────┬──────────┘   │   shipment.delivered                 │   │   customer: GET /order/{id}
-           │              │     → order: shipped → delivered     │   │   publishes shipment.dispatched
-           ▼              └──────────────────────────────────────┘   │            shipment.delivered
-┌──────────────────┐                                                  └──────────────┬───────────────
-│ user_service_db  │                                                                 │
-│ (profile row)    │                                                                 ▼
-└──────────────────┘                                               ┌──────────────────────┐
+│ (aio-pika consumer) │   │   (aio-pika consumer)                │   │   auto-created on payment.succeeded
+│ creates UserProfile │   │   shipment.dispatched                │   │   staff: PATCH /{id}/dispatch
+│ idempotently        │   │     → order: paid → shipped          │   │         PATCH /{id}/notify-customer
+└──────────┬──────────┘   │   shipment.delivery_pending          │   │   customer: GET /order/{id}
+           │              │     → order: shipped →               │   │            PATCH /orders/{id}/confirm-delivery
+           ▼              │         awaiting_confirmation        │   │   publishes shipment.dispatched
+┌──────────────────┐      │   shipment.delivered                 │   │            shipment.delivery_pending
+│ user_service_db  │      │     → order: delivered               │   │            shipment.delivered
+│ (profile row)    │      └──────────────────────────────────────┘   └──────────────┬───────────────
+└──────────────────┘                                                                 │
+                                                                                     ▼
+                                                                   ┌──────────────────────┐
                                                                    │  shipping_service_db │
                                                                    └──────────────────────┘
 
      │ payment.succeeded · payment.failed
-     │ shipment.dispatched · shipment.delivered
+     │ shipment.dispatched · shipment.delivery_pending · shipment.delivered
      ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │   notification-service (pure consumer, no HTTP port)                  │
 │   fetches recipient email via user-service GET /users/internal/{id}   │
-│   sends via AWS SES: payment confirmed / failed / on the way /        │
-│                       delivered                                        │
+│   payment.succeeded   → "✅ Payment confirmed — order being prepared" │
+│   payment.failed      → "❌ Payment failed"                           │
+│   shipment.dispatched → "🛵 Your order is on the way!"               │
+│   delivery_pending    → "📦 Did you receive your order?"             │
 │   idempotency guard — checks notification_service_db before sending   │
 └──────────────────────────────────┬───────────────────────────────────┘
                                    │
@@ -134,12 +138,13 @@ All 7 databases run on a single host-managed PostgreSQL instance
 | `user-service` | **Done** | `8002` | JWT-protected `GET`/`PATCH /users/{user_id}`, self-only authorization; internal endpoint for service-to-service email lookup |
 | `user-service-worker` | **Done** | — | Consumes `user.registered` events, creates profile rows idempotently |
 | `product-service` | **Done** | `8003` | Public menu browsing (categories, products, size-based pricing); staff-only create/update/delete |
-| `order-service` | **Done** | `8004` | Persistent cart, checkout with live price verification, order lifecycle state machine (`pending_payment → paid → shipped → delivered`) |
-| `order-service-worker` | **Done** | — | Consumes `shipment.dispatched`/`shipment.delivered` events, drives order state machine forward |
+| `order-service` | **Done** | `8004` | Persistent cart, checkout with live price verification, order lifecycle state machine (`pending_payment → paid → shipped → awaiting_confirmation → delivered`), staff endpoint for all orders |
+| `order-service-worker` | **Done** | — | Consumes `shipment.dispatched`, `shipment.delivery_pending`, `shipment.delivered` events, drives order state machine forward |
 | `payment-service` | **Done** | `8005` | Paystack initialize+verify flow, HMAC-SHA512 webhook verification, payment audit trail, retry-with-backoff, publishes `payment.succeeded`/`payment.failed` |
-| `shipping-service` | **Done** | `8006` | Staff-only shipment create/dispatch/deliver; customer shipment tracking; publishes `shipment.dispatched`/`shipment.delivered` |
-| `notification-service` | **Done** | — | Consumes payment + shipping events, sends transactional emails via AWS SES; idempotency guard prevents duplicate sends |
-| `frontend` | **Done** | `3000` | React SPA (Vite + Tailwind) served by nginx; proxies `/api/*` to backend services — no CORS, no hardcoded service URLs |
+| `shipping-service` | **Done** | `8006` | Staff-only shipment dispatch/notify-customer; customer shipment tracking and delivery confirmation; auto-created on `payment.succeeded`; publishes `shipment.dispatched`, `shipment.delivery_pending`, `shipment.delivered` |
+| `shipping-service-worker` | **Done** | — | Consumes `payment.succeeded`, auto-creates pending shipment for every paid order |
+| `notification-service` | **Done** | — | Consumes payment + shipping events, sends transactional emails via AWS SES (payment confirmed, payment failed, on the way, delivery confirmation request, delivered); idempotency guard prevents duplicate sends |
+| `frontend` | **Done** | `3000` | React SPA (Vite + Tailwind) served by nginx; proxies `/api/*` to backend services — no CORS, no hardcoded service URLs; pages: Menu, Cart, Orders, OrderDetail (tracking timeline + confirm delivery), Staff Dashboard, ForgotPassword, ResetPassword |
 
 ---
 
@@ -416,15 +421,19 @@ See `scripts/README.md` for full details.
 │   │   ├── api/                # axios client — all requests to /api/* (nginx proxy)
 │   │   ├── components/         # Navbar, ProtectedRoute
 │   │   ├── context/            # AuthContext — JWT storage, login/logout, user state
-│   │   └── pages/              # Menu, Login, Register, Cart, Orders, OrderDetail, Profile
+│   │   └── pages/              # Menu, Login, Register, ForgotPassword, ResetPassword,
+│   │                           #   Cart, Orders, OrderDetail (tracking timeline + confirm delivery),
+│   │                           #   Profile, StaffDashboard
 │   ├── nginx.conf              # Serves React SPA; proxies /api/* to backend services
 │   └── Dockerfile              # Multi-stage: node:18-alpine builds, nginx:alpine serves
 ├── scripts/
-│   ├── reconcile_payments.py   # saga-pattern backstop — detects/fixes payment↔order mismatches
-│   ├── run_reconciliation.sh   # cron wrapper — venv activation, logging, log rotation
-│   ├── requirements.txt        # httpx, psycopg2-binary (runs on host, not in Docker)
-│   ├── logs/                   # not committed — reconciliation run history
-│   └── README.md               # setup, manual usage, crontab entry
+│   ├── reconcile_payments.py     # saga backstop — detects/fixes payment↔order mismatches
+│   ├── run_reconciliation.sh     # cron wrapper — every 10 minutes
+│   ├── auto_confirm_delivery.py  # auto-confirms orders stuck in awaiting_confirmation > 2hrs
+│   ├── run_auto_confirm.sh       # cron wrapper — every 15 minutes
+│   ├── requirements.txt          # httpx, psycopg2-binary (runs on host, not in Docker)
+│   ├── logs/                     # not committed — script run history
+│   └── README.md                 # setup, manual usage, crontab entries
 ├── docker-compose.yml
 └── .env                        # not committed
 ```
@@ -435,35 +444,48 @@ See `scripts/README.md` for full details.
 
 - [x] `auth-service`: registration, strict password validation, login, JWT issue/refresh
 - [x] `auth-service`: real email verification via AWS SES, login gated on verification
+- [x] `auth-service`: forgot password / reset password flow via `URLSafeTimedSerializer` tokens (1hr window), AWS SES reset emails
 - [x] Event-driven communication: `auth-service` publishes, `user-service-worker` consumes
 - [x] Idempotent, at-least-once event consumption (proven under real failure conditions, not just designed for it)
 - [x] `user-service`: JWT-protected profile read/update endpoints, self-only authorization (proven against both an unrelated user and a self/target mismatch)
+- [x] `user-service`: internal endpoint (`GET /users/internal/{id}`) for service-to-service email lookup without JWT
 - [x] `product-service`: relational catalog (categories, products, size-based variants), public reads, staff-only writes (proven against missing-token and non-staff cases)
+- [x] `product-service`: `image_url` column on products; Nigerian food menu (19 dishes across 5 categories) with Unsplash images
 - [x] Consistent `AuthJWTException` handling across all services — clean `401`/`403` responses instead of unhandled `500`s on missing/invalid tokens
-- [x] `order-service`: persistent cart, checkout with live price verification against `product-service`, order state machine (`draft → pending_payment → paid → shipped → delivered`), `order.placed` event published
+- [x] `order-service`: persistent cart, checkout with live price verification against `product-service`, order state machine (`draft → pending_payment → paid → shipped → awaiting_confirmation → delivered`), `order.placed` event published
+- [x] `order-service`: staff-only `GET /orders/all` endpoint returning all users' active orders
+- [x] `order-service`: customer `PATCH /orders/{id}/confirm-delivery` endpoint for delivery confirmation
 - [x] `payment-service`: Paystack initialize+verify flow (test mode, NGN), HMAC-SHA512 webhook signature verification, transaction re-verification with Paystack API, `payment.succeeded`/`payment.failed` events published, order status updated via internal HTTP call
 - [x] `payment-service`: full pytest suite (55 tests) — initialize, webhook security, webhook processing, retry-with-backoff
 - [x] Webhook handler returns `200` immediately after signature verification and processes in a background task (Paystack's 30s delivery timeout safety)
 - [x] Retry-with-backoff for the payment→order status propagation call, tested against transient failures and network errors
 - [x] Reconciliation script (`scripts/reconcile_payments.py`) — detects and repairs payment/order status mismatches; tested against a real induced mismatch, not just designed
 - [x] Reconciliation running on a schedule via cron (`scripts/run_reconciliation.sh`) with logging and log rotation
-- [x] `shipping-service`: staff-only shipment creation, dispatch, delivery; customer tracking; state machine (`pending → dispatched → delivered`); publishes `shipment.dispatched`/`shipment.delivered`; 40 tests (service + route layer)
-- [x] `order-service-worker`: consumes `shipment.dispatched`/`shipment.delivered` via aio-pika async consumer; drives order state machine (`paid → shipped → delivered`) idempotently
-- [x] `notification-service`: pure-consumer worker (aio-pika) consuming `payment_events` + `shipping_events`; sends transactional emails via AWS SES for all four event types; idempotency guard prevents duplicate sends; audit log in `notification_service_db`
+- [x] `shipping-service`: auto-created on `payment.succeeded` by `shipping-service-worker`; staff dispatch/notify-customer; customer tracking; state machine (`pending → dispatched → delivered`); 46 tests (service + route layer)
+- [x] `shipping-service`: `PATCH /{id}/notify-customer` — sets order to `awaiting_confirmation`, sends customer confirmation email, auto-confirmed after 2hrs by cron
+- [x] `shipping-service-worker`: consumes `payment.succeeded`, auto-creates pending shipment for every paid order
+- [x] `order-service-worker`: consumes `shipment.dispatched`, `shipment.delivery_pending`, `shipment.delivered` via aio-pika; drives order state machine idempotently
+- [x] `notification-service`: pure-consumer worker (aio-pika) — 5 email types: payment confirmed, payment failed, on the way, delivery confirmation request, delivered; idempotency guard; audit log
+- [x] Auto-confirm cron (`scripts/auto_confirm_delivery.py`) — finds orders in `awaiting_confirmation` for >2hrs, marks delivered via order-service API
 - [x] UUID casting at route layer — consistent across all services, fixes SQLite test compatibility
-- [x] Per-service pytest suites running inside containers (321 tests across 6 services: 78 + 30 + 56 + 62 + 55 + 40)
-- [x] Automated E2E test script covering full user journey across all services including shipping lifecycle
-- [x] React SPA (Vite + Tailwind) covering full user journey: register → login → browse menu → add to cart → checkout → Paystack payment → order history with live status
-- [x] nginx reverse proxy serving the React app and routing `/api/*` to backend services — same-origin, no CORS
+- [x] Per-service pytest suites running inside containers (367 tests across 6 services: 78 + 30 + 56 + 62 + 55 + 46 + 40)
+- [x] Automated E2E test script covering full user journey across all services including shipping lifecycle and delivery confirmation
+- [x] React SPA (Vite + Tailwind) — Glovo-inspired design: dark navy hero, Nigerian orange accent, warm cream background
+- [x] Nigerian food menu with real food photos (Unsplash), per-product emoji fallbacks, category pills
+- [x] Order tracking timeline (5-step visual progress indicator on order detail page)
+- [x] Staff dashboard — all-orders view across all users, dispatch and notify-customer buttons
+- [x] Customer delivery confirmation button (`awaiting_confirmation` → `delivered`)
+- [x] Forgot password / reset password pages with 1-hour token expiry
+- [x] nginx reverse proxy serving the React app and routing `/api/*` to all 6 backend services — same-origin, no CORS
 - [ ] API gateway / service-to-service auth
 - [ ] SES production access (currently sandbox — verified recipients only)
 - [ ] Admin/staff-promotion endpoint (currently `is_staff` is only settable directly in Postgres)
-- [ ] Pass user email to `payment-service` from `user-service` rather than using a hardcoded placeholder
 - [ ] Reconciliation alerting — currently a failed fix only logs to stderr; no Slack/PagerDuty integration yet
 - [ ] `notification-service` tests — handler unit tests, template tests, idempotency tests
+- [ ] Real Nigerian food photos (current Unsplash images are generic approximations)
 
 ---
 
 ## Why This Project Exists
 
-Built as a hands-on engineering project to practice production-relevant patterns across the full stack: async Python microservices, JWT auth and cross-service token verification, database-per-service architecture, event-driven service communication via RabbitMQ (with both pika and aio-pika, having learned the hard way that blocking consumers and async SQLAlchemy drivers cannot share an event loop), relational data modeling for a real domain, real payment gateway integration (Paystack initialize+verify with webhook signature verification), transactional email notifications (AWS SES via a pure-consumer async worker), containerized local dev that mirrors how a real deployment would be wired, and a React frontend served through an nginx reverse proxy — all connected into one working system rather than isolated demos. Several real production failure modes were deliberately worked through rather than avoided, including Postgres network/auth configuration across shifting Docker subnets, Docker layer-cache and BuildKit tuning, consumer idempotency under genuine message redelivery, an unhandled-exception gap in JWT error handling caught by testing the unhappy path rather than assuming it worked, authorization boundaries verified with actual cross-user and cross-permission requests, the deliberate choice of synchronous vs. asynchronous communication based on the actual requirements of each interaction rather than defaulting to one pattern everywhere, the explicit rejection of distributed-transaction atomicity in favor of a saga pattern with retry-with-backoff and reconciliation (tested against a real induced mismatch), and the event loop conflict between pika's blocking connection model and asyncpg that forced a migration to aio-pika for all async consumers.
+Built as a hands-on engineering project to practice production-relevant patterns across the full stack: async Python microservices, JWT auth and cross-service token verification, database-per-service architecture, event-driven service communication via RabbitMQ (with both pika and aio-pika, having learned the hard way that blocking consumers and async SQLAlchemy drivers cannot share an event loop), relational data modeling for a real domain, real payment gateway integration (Paystack initialize+verify with webhook signature verification), transactional email notifications (AWS SES via a pure-consumer async worker), containerized local dev that mirrors how a real deployment would be wired, and a React frontend served through an nginx reverse proxy — all connected into one working system rather than isolated demos. Several real production failure modes were deliberately worked through rather than avoided, including Postgres network/auth configuration across shifting Docker subnets, Docker layer-cache and BuildKit tuning, consumer idempotency under genuine message redelivery, an unhandled-exception gap in JWT error handling caught by testing the unhappy path rather than assuming it worked, authorization boundaries verified with actual cross-user and cross-permission requests, the deliberate choice of synchronous vs. asynchronous communication based on the actual requirements of each interaction rather than defaulting to one pattern everywhere, the explicit rejection of distributed-transaction atomicity in favor of a saga pattern with retry-with-backoff and reconciliation (tested against a real induced mismatch), the event loop conflict between pika's blocking connection model and asyncpg that forced a migration to aio-pika for all async consumers, and a delivery confirmation flow designed around real business logic — rider reports delivery, customer gets notified to confirm, 2-hour auto-confirm cron fires if they don't — rather than a simple "mark delivered" button.

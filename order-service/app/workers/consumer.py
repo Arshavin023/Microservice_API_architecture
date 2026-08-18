@@ -58,7 +58,7 @@ async def handle_shipment_delivered(data: dict, session_factory) -> None:
     async with session_factory() as db:
         result = await db.execute(
             text("UPDATE orders SET status='delivered', updated_at=now() "
-                 "WHERE id=:oid AND status='shipped' RETURNING id"),
+                 "WHERE id=:oid AND status IN ('awaiting_confirmation','shipped') RETURNING id"),
             {"oid": order_id},
         )
         await db.commit()
@@ -66,12 +66,33 @@ async def handle_shipment_delivered(data: dict, session_factory) -> None:
     if result.fetchone():
         logger.info(f"Order {order_id} → delivered")
     else:
-        logger.warning(f"Order {order_id} not updated — not in 'shipped' state (idempotent)")
+        logger.warning(f"Order {order_id} not updated — not in expected state (idempotent)")
+
+
+async def handle_delivery_pending(data: dict, session_factory) -> None:
+    """Order: shipped → awaiting_confirmation (customer must confirm or auto-confirms in 2hrs)."""
+    order_id = data.get("order_id")
+    if not order_id:
+        logger.warning("shipment.delivery_pending missing order_id"); return
+
+    async with session_factory() as db:
+        result = await db.execute(
+            text("UPDATE orders SET status='awaiting_confirmation', updated_at=now() "
+                 "WHERE id=:oid AND status='shipped' RETURNING id"),
+            {"oid": order_id},
+        )
+        await db.commit()
+
+    if result.fetchone():
+        logger.info(f"Order {order_id} → awaiting_confirmation")
+    else:
+        logger.warning(f"Order {order_id} not updated to awaiting_confirmation (idempotent)")
 
 
 HANDLERS = {
-    "shipment.dispatched": handle_shipment_dispatched,
-    "shipment.delivered":  handle_shipment_delivered,
+    "shipment.dispatched":       handle_shipment_dispatched,
+    "shipment.delivery_pending": handle_delivery_pending,
+    "shipment.delivered":        handle_shipment_delivered,
 }
 
 
@@ -93,6 +114,7 @@ async def main():
 
                 queue = await channel.declare_queue(QUEUE_NAME, durable=True)
                 await queue.bind(exchange, routing_key="shipment.dispatched")
+                await queue.bind(exchange, routing_key="shipment.delivery_pending")
                 await queue.bind(exchange, routing_key="shipment.delivered")
 
                 logger.info(

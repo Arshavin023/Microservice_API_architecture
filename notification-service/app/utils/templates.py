@@ -95,7 +95,36 @@ def shipment_dispatched(
     return subject, html, text
 
 
-def shipment_delivered(order_id: str) -> tuple[str, str, str]:
+def delivery_pending_confirmation(order_id: str) -> tuple[str, str, str]:
+    subject = "📦 Did you receive your order? Please confirm"
+    html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
+  <h2 style="color:#1A1A2E">Did you receive your order? 📦</h2>
+  <p>Our rider has reported that your order
+     <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">{order_id[:8]}…</code>
+     has been delivered.</p>
+  <p>Please log in to confirm you received it. If you don't confirm within
+     <strong>2 hours</strong>, your order will be automatically marked as delivered.</p>
+  <a href="http://localhost:3000/orders/{order_id}"
+     style="display:inline-block;background:#FF6B35;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:12px">
+    Confirm delivery
+  </a>
+  <p style="color:#9ca3af;font-size:13px;margin-top:16px">
+    If you did <strong>not</strong> receive your order, please contact us immediately.
+  </p>
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
+  <p style="color:#6b7280;font-size:13px">Pizzasale — fresh Nigerian flavours.</p>
+</div>
+"""
+    text = (
+        f"Did you receive your order?\n\n"
+        f"Our rider has reported that order {order_id[:8]}… has been delivered.\n"
+        f"Please confirm receipt at http://localhost:3000/orders/{order_id}\n\n"
+        f"If you don't confirm within 2 hours, your order will be auto-confirmed.\n"
+        f"If you did NOT receive it, contact us immediately.\n\n"
+        f"— Pizzasale"
+    )
+    return subject, html, text
     subject = "🎉 Your order has been delivered!"
     html = f"""
 <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">

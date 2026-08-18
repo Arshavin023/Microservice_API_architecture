@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Loader2, Package, ChevronRight, CheckCircle, Clock, XCircle, Truck, MapPin } from 'lucide-react'
 import { ordersApi, paymentsApi, shippingApi } from '../api'
+import { Loader2, Package, ChevronRight, CheckCircle, Clock, XCircle, Truck, MapPin } from 'lucide-react'
 
 const STATUS_CONFIG = {
-  draft:           { label: 'Draft',            color: 'bg-gray-100 text-gray-600',      dot: 'bg-gray-400' },
-  pending_payment: { label: 'Awaiting payment',  color: 'bg-amber-100 text-amber-700',    dot: 'bg-amber-400' },
-  paid:            { label: 'Paid',              color: 'bg-green-100 text-green-700',    dot: 'bg-green-500' },
-  shipped:         { label: 'On the way',        color: 'bg-blue-100 text-blue-700',      dot: 'bg-blue-500' },
-  delivered:       { label: 'Delivered',         color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
-  cancelled:       { label: 'Cancelled',         color: 'bg-red-100 text-red-700',        dot: 'bg-red-400' },
+  draft:                  { label: 'Draft',                color: 'bg-gray-100 text-gray-600',        dot: 'bg-gray-400' },
+  pending_payment:        { label: 'Awaiting payment',     color: 'bg-amber-100 text-amber-700',      dot: 'bg-amber-400' },
+  paid:                   { label: 'Paid',                 color: 'bg-green-100 text-green-700',      dot: 'bg-green-500' },
+  shipped:                { label: 'On the way',           color: 'bg-blue-100 text-blue-700',        dot: 'bg-blue-500' },
+  awaiting_confirmation:  { label: 'Confirm delivery',     color: 'bg-purple-100 text-purple-700',    dot: 'bg-purple-500' },
+  delivered:              { label: 'Delivered',            color: 'bg-emerald-100 text-emerald-700',  dot: 'bg-emerald-500' },
+  cancelled:              { label: 'Cancelled',            color: 'bg-red-100 text-red-700',          dot: 'bg-red-400' },
 }
 
 function StatusBadge({ status }) {
@@ -31,17 +32,17 @@ const STEPS = [
   { key: 'delivered',  label: 'Delivered',          icon: MapPin },
 ]
 
-function getActiveStep(orderStatus, shipmentStatus) {
-  if (orderStatus === 'delivered') return 5
-  if (orderStatus === 'shipped')   return 4
-  if (shipmentStatus === 'pending') return 3
-  if (orderStatus === 'paid')      return 3
-  if (orderStatus === 'pending_payment') return 1
+function getActiveStep(orderStatus) {
+  if (orderStatus === 'delivered')             return 5
+  if (orderStatus === 'awaiting_confirmation') return 5
+  if (orderStatus === 'shipped')               return 4
+  if (orderStatus === 'paid')                  return 3
+  if (orderStatus === 'pending_payment')       return 1
   return 0
 }
 
 function TrackingTimeline({ order, shipment }) {
-  const activeStep = getActiveStep(order.status, shipment?.status)
+  const activeStep = getActiveStep(order.status)
 
   return (
     <div className="card p-5 mb-6">
@@ -164,10 +165,12 @@ export function Orders() {
 // ── Order detail ──────────────────────────────────────────────────
 export function OrderDetail() {
   const { id } = useParams()
-  const [order,    setOrder]    = useState(null)
-  const [payment,  setPayment]  = useState(null)
-  const [shipment, setShipment] = useState(null)
-  const [loading,  setLoading]  = useState(true)
+  const [order,       setOrder]       = useState(null)
+  const [payment,     setPayment]     = useState(null)
+  const [shipment,    setShipment]    = useState(null)
+  const [loading,     setLoading]     = useState(true)
+  const [confirming,  setConfirming]  = useState(false)
+  const [confirmed,   setConfirmed]   = useState(false)
 
   useEffect(() => {
     Promise.allSettled([
@@ -180,6 +183,19 @@ export function OrderDetail() {
       if (shipmentRes.status === 'fulfilled') setShipment(shipmentRes.value.data)
     }).finally(() => setLoading(false))
   }, [id])
+
+  const handleConfirmDelivery = async () => {
+    setConfirming(true)
+    try {
+      const res = await ordersApi.confirmDelivery(id)
+      setOrder(res.data)
+      setConfirmed(true)
+    } catch (err) {
+      console.error('Confirm delivery failed:', err)
+    } finally {
+      setConfirming(false)
+    }
+  }
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -214,6 +230,34 @@ export function OrderDetail() {
       {/* Tracking timeline for paid+ orders */}
       {showTracking && (
         <TrackingTimeline order={order} shipment={shipment} />
+      )}
+
+      {/* Awaiting confirmation CTA */}
+      {order.status === 'awaiting_confirmation' && !confirmed && (
+        <div className="card p-5 mb-6 border-purple-200 bg-purple-50">
+          <p className="font-semibold text-purple-800 mb-1">📦 Did you receive your order?</p>
+          <p className="text-sm text-purple-700 mb-4">
+            Our rider has reported delivery. Please confirm you received your order.
+            If you don't confirm within <strong>2 hours</strong>, it will be automatically confirmed.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleConfirmDelivery}
+              disabled={confirming}
+              className="btn-primary text-sm flex items-center gap-2"
+            >
+              {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : '✓'}
+              Yes, I received my order
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmed && (
+        <div className="card p-5 mb-6 bg-emerald-50 border-emerald-200">
+          <p className="font-semibold text-emerald-800">🎉 Thank you for confirming!</p>
+          <p className="text-sm text-emerald-700 mt-1">Your order is now marked as delivered. Enjoy your meal!</p>
+        </div>
       )}
 
       {/* Pending payment CTA */}

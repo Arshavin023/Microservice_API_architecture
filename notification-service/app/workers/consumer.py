@@ -145,11 +145,29 @@ async def handle_shipment_delivered(data: dict, session_factory) -> None:
     await log_notification(session_factory, order_id, user_id, email, notif_type, subject, sent)
 
 
+async def handle_delivery_pending(data: dict, session_factory) -> None:
+    from app.utils.templates import delivery_pending_confirmation
+    from app.utils.ses import send_email
+    order_id   = data.get("order_id", "")
+    user_id    = data.get("user_id", "")
+    notif_type = "shipment_delivered"  # reuse — customer confirmation request
+
+    if await already_sent(session_factory, order_id, notif_type):
+        logger.info(f"Already sent delivery confirmation request for {order_id}"); return
+    email = await get_user_email(user_id)
+    if not email:
+        logger.error(f"No email for user {user_id}"); return
+    subject, html, text = delivery_pending_confirmation(order_id)
+    sent = send_email(email, subject, html, text)
+    await log_notification(session_factory, order_id, user_id, email, notif_type, subject, sent)
+
+
 HANDLERS = {
-    "payment.succeeded":   handle_payment_succeeded,
-    "payment.failed":      handle_payment_failed,
-    "shipment.dispatched": handle_shipment_dispatched,
-    "shipment.delivered":  handle_shipment_delivered,
+    "payment.succeeded":         handle_payment_succeeded,
+    "payment.failed":            handle_payment_failed,
+    "shipment.dispatched":       handle_shipment_dispatched,
+    "shipment.delivery_pending": handle_delivery_pending,
+    "shipment.delivered":        handle_shipment_delivered,
 }
 
 
@@ -178,6 +196,7 @@ async def main():
                 await queue.bind(payment_exchange,  routing_key="payment.succeeded")
                 await queue.bind(payment_exchange,  routing_key="payment.failed")
                 await queue.bind(shipping_exchange, routing_key="shipment.dispatched")
+                await queue.bind(shipping_exchange, routing_key="shipment.delivery_pending")
                 await queue.bind(shipping_exchange, routing_key="shipment.delivered")
 
                 logger.info(

@@ -64,6 +64,11 @@ export default function Login() {
               placeholder="••••••••"
             />
           </div>
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-sm text-[#FF6B35] hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2" disabled={loading}>
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Log in
