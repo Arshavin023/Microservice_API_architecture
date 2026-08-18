@@ -19,6 +19,7 @@ Flow:
         → order-service-worker: order → delivered
         → notification-service: "Delivered" email
 """
+
 import os
 import json
 import uuid
@@ -37,7 +38,7 @@ logger = logging.getLogger("shipping-service-worker")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 RABBITMQ_URL = os.getenv("RABBITMQ_URL")
-QUEUE_NAME   = "shipping_service.payment_events"
+QUEUE_NAME = "shipping_service.payment_events"
 
 
 def get_session_factory():
@@ -51,8 +52,9 @@ async def handle_payment_succeeded(data: dict, session_factory) -> None:
     Idempotent — if a shipment already exists for the order, skip.
     """
     import uuid6
+
     order_id = data.get("order_id")
-    user_id  = data.get("user_id")
+    user_id = data.get("user_id")
 
     if not order_id or not user_id:
         logger.warning(f"payment.succeeded missing order_id or user_id: {data}")
@@ -111,11 +113,13 @@ async def main():
                     async for message in queue_iter:
                         async with message.process(requeue=False):
                             try:
-                                data  = json.loads(message.body)
+                                data = json.loads(message.body)
                                 event = data.get("event")
                                 logger.info(f"Received event: {event}")
                                 if event == "payment.succeeded":
-                                    await handle_payment_succeeded(data, session_factory)
+                                    await handle_payment_succeeded(
+                                        data, session_factory
+                                    )
                                 else:
                                     logger.info(f"Ignoring event: {event}")
                             except Exception as e:

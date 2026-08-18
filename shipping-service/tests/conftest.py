@@ -6,6 +6,7 @@ require_staff and get_current_user_id are both overridden in the client
 fixture using the actual JWT_SECRET from environment — same approach that
 fixed the 401 issues in other services.
 """
+
 import os
 import uuid
 import pytest
@@ -85,6 +86,7 @@ async def db():
 
 def _make_token(user_id: str, is_staff: bool = False) -> str:
     import jwt as pyjwt
+
     secret = os.environ.get("JWT_SECRET", "test-secret-key-for-testing-only")
     payload = {
         "sub": "testuser",

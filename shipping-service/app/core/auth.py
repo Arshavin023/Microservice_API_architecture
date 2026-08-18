@@ -29,4 +29,5 @@ def get_current_user_id(Authorize: AuthJWT = Depends()):
     if not user_id:
         raise HTTPException(status_code=422, detail="Missing user_id claim in token")
     from uuid import UUID
+
     return UUID(user_id)

@@ -5,6 +5,7 @@ Events are mocked — no real RabbitMQ needed.
 Auth dependencies (require_staff, get_current_user_id) are overridden
 in conftest.py so tests don't need fastapi_jwt_auth2 running.
 """
+
 import uuid
 import pytest
 from unittest.mock import patch
@@ -20,16 +21,17 @@ def _new_uuid() -> str:
 
 def _shipment_payload(**overrides):
     base = {
-        "order_id":         _new_uuid(),
-        "user_id":          _new_uuid(),
+        "order_id": _new_uuid(),
+        "user_id": _new_uuid(),
         "delivery_address": "12 Wuse Zone 4, Abuja",
-        "driver_name":      "Emeka Obi",
-        "driver_phone":     "+2348012345678",
+        "driver_name": "Emeka Obi",
+        "driver_phone": "+2348012345678",
     }
     return {**base, **overrides}
 
 
 # ── POST /shipments ───────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestCreateShipment:
@@ -43,15 +45,13 @@ class TestCreateShipment:
         assert resp.json()["status"] == "pending"
 
     async def test_create_stores_all_fields(self, client, db):
-        payload = _shipment_payload(
-            tracking_note="Handle with care"
-        )
+        payload = _shipment_payload(tracking_note="Handle with care")
         resp = await client.post(SHIPMENTS_URL, json=payload)
         data = resp.json()
         assert data["delivery_address"] == payload["delivery_address"]
-        assert data["driver_name"]      == payload["driver_name"]
-        assert data["driver_phone"]     == payload["driver_phone"]
-        assert data["tracking_note"]    == "Handle with care"
+        assert data["driver_name"] == payload["driver_name"]
+        assert data["driver_phone"] == payload["driver_phone"]
+        assert data["tracking_note"] == "Handle with care"
 
     async def test_create_missing_delivery_address_422(self, client, db):
         payload = _shipment_payload()
@@ -74,6 +74,7 @@ class TestCreateShipment:
 
 
 # ── PATCH /shipments/{id}/dispatch ───────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestDispatchShipment:
@@ -121,7 +122,9 @@ class TestDispatchShipment:
         shipment_id = await self._create(client)
         with patch("app.services.shipment_service.publish_shipment_dispatched"):
             await client.patch(f"{SHIPMENTS_URL}/{shipment_id}/dispatch", json={})
-            resp = await client.patch(f"{SHIPMENTS_URL}/{shipment_id}/dispatch", json={})
+            resp = await client.patch(
+                f"{SHIPMENTS_URL}/{shipment_id}/dispatch", json={}
+            )
         assert resp.status_code == 409
 
     async def test_dispatch_invalid_uuid_422(self, client, db):
@@ -133,6 +136,7 @@ class TestDispatchShipment:
 
 
 # ── PATCH /shipments/{id}/deliver ────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestDeliverShipment:
@@ -199,6 +203,7 @@ class TestDeliverShipment:
 
 # ── GET /shipments/{id} (staff) ───────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestGetShipment:
 
@@ -219,6 +224,7 @@ class TestGetShipment:
 
 
 # ── GET /shipments/order/{order_id} (customer) ───────────────────
+
 
 @pytest.mark.asyncio
 class TestGetShipmentByOrder:
@@ -241,8 +247,8 @@ class TestGetShipmentByOrder:
 
     async def test_customer_cannot_view_other_users_shipment(self, client, db):
         # Create shipment with a different user_id than the authenticated customer
-        order_id       = _new_uuid()
-        other_user_id  = _new_uuid()
+        order_id = _new_uuid()
+        other_user_id = _new_uuid()
         payload = _shipment_payload(order_id=order_id, user_id=str(other_user_id))
         await client.post(SHIPMENTS_URL, json=payload)
 
@@ -251,6 +257,7 @@ class TestGetShipmentByOrder:
 
 
 # ── GET /health ───────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_health_check(client):

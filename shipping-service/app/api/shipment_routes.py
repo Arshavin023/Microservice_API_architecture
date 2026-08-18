@@ -28,6 +28,7 @@ def _parse_uuid(value: str, field: str = "id") -> UUID:
 
 # ── Staff write endpoints ─────────────────────────────────────────
 
+
 @router.post("", response_model=ShipmentResponse, status_code=201)
 async def create_shipment(
     data: CreateShipmentRequest,
@@ -106,6 +107,7 @@ async def notify_customer(
 
 
 # ── Customer read endpoints ───────────────────────────────────────
+
 
 @router.get("/order/{order_id}", response_model=ShipmentResponse)
 async def get_shipment_by_order(

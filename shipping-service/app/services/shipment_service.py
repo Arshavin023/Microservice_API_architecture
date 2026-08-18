@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.shipment import Shipment, ShipmentStatus
-from app.utils.events import publish_shipment_dispatched, publish_delivery_pending, publish_shipment_delivered
+from app.utils.events import (
+    publish_shipment_dispatched,
+    publish_delivery_pending,
+    publish_shipment_delivered,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,11 +84,14 @@ class ShipmentService:
                 f"— only 'pending' shipments can be dispatched"
             )
 
-        shipment.status        = ShipmentStatus.dispatched
+        shipment.status = ShipmentStatus.dispatched
         shipment.dispatched_at = datetime.utcnow()
-        if driver_name:   shipment.driver_name  = driver_name
-        if driver_phone:  shipment.driver_phone = driver_phone
-        if tracking_note: shipment.tracking_note = tracking_note
+        if driver_name:
+            shipment.driver_name = driver_name
+        if driver_phone:
+            shipment.driver_phone = driver_phone
+        if tracking_note:
+            shipment.tracking_note = tracking_note
 
         await db.commit()
         await db.refresh(shipment)
@@ -127,7 +134,7 @@ class ShipmentService:
                 f"— only 'dispatched' shipments can be marked as delivery pending"
             )
 
-        shipment.status       = ShipmentStatus.delivered
+        shipment.status = ShipmentStatus.delivered
         shipment.delivered_at = datetime.utcnow()
         if tracking_note:
             shipment.tracking_note = tracking_note
@@ -165,7 +172,7 @@ class ShipmentService:
                 f"Cannot deliver shipment in status '{shipment.status}'"
             )
 
-        shipment.status       = ShipmentStatus.delivered
+        shipment.status = ShipmentStatus.delivered
         shipment.delivered_at = datetime.utcnow()
         if tracking_note:
             shipment.tracking_note = tracking_note

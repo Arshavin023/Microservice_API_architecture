@@ -5,16 +5,16 @@ import pika
 
 logger = logging.getLogger(__name__)
 
-RABBITMQ_URL   = os.getenv("RABBITMQ_URL")
-EXCHANGE_NAME  = "shipping_events"
-EXCHANGE_TYPE  = "topic"
+RABBITMQ_URL = os.getenv("RABBITMQ_URL")
+EXCHANGE_NAME = "shipping_events"
+EXCHANGE_TYPE = "topic"
 
 
 def _publish(routing_key: str, message: dict) -> None:
     try:
-        params     = pika.URLParameters(RABBITMQ_URL)
+        params = pika.URLParameters(RABBITMQ_URL)
         connection = pika.BlockingConnection(params)
-        channel    = connection.channel()
+        channel = connection.channel()
 
         channel.exchange_declare(
             exchange=EXCHANGE_NAME,
@@ -33,9 +33,7 @@ def _publish(routing_key: str, message: dict) -> None:
         )
 
         connection.close()
-        logger.info(
-            f"Published {routing_key} for order_id={message.get('order_id')}"
-        )
+        logger.info(f"Published {routing_key} for order_id={message.get('order_id')}")
 
     except Exception as e:
         # Event publish failure must not abort the shipment DB write.
@@ -51,15 +49,18 @@ def publish_shipment_dispatched(
     driver_name: str | None,
     driver_phone: str | None,
 ) -> None:
-    _publish("shipment.dispatched", {
-        "event":            "shipment.dispatched",
-        "shipment_id":      shipment_id,
-        "order_id":         order_id,
-        "user_id":          user_id,
-        "delivery_address": delivery_address,
-        "driver_name":      driver_name,
-        "driver_phone":     driver_phone,
-    })
+    _publish(
+        "shipment.dispatched",
+        {
+            "event": "shipment.dispatched",
+            "shipment_id": shipment_id,
+            "order_id": order_id,
+            "user_id": user_id,
+            "delivery_address": delivery_address,
+            "driver_name": driver_name,
+            "driver_phone": driver_phone,
+        },
+    )
 
 
 def publish_delivery_pending(
@@ -72,12 +73,15 @@ def publish_delivery_pending(
     been delivered by the rider. Customer must confirm receipt within
     2 hours, after which the cron job auto-confirms.
     """
-    _publish("shipment.delivery_pending", {
-        "event":       "shipment.delivery_pending",
-        "shipment_id": shipment_id,
-        "order_id":    order_id,
-        "user_id":     user_id,
-    })
+    _publish(
+        "shipment.delivery_pending",
+        {
+            "event": "shipment.delivery_pending",
+            "shipment_id": shipment_id,
+            "order_id": order_id,
+            "user_id": user_id,
+        },
+    )
 
 
 def publish_shipment_delivered(
@@ -85,9 +89,12 @@ def publish_shipment_delivered(
     order_id: str,
     user_id: str,
 ) -> None:
-    _publish("shipment.delivered", {
-        "event":       "shipment.delivered",
-        "shipment_id": shipment_id,
-        "order_id":    order_id,
-        "user_id":     user_id,
-    })
+    _publish(
+        "shipment.delivered",
+        {
+            "event": "shipment.delivered",
+            "shipment_id": shipment_id,
+            "order_id": order_id,
+            "user_id": user_id,
+        },
+    )
