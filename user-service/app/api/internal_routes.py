@@ -2,6 +2,7 @@
 Internal route for service-to-service calls.
 Place at: user-service/app/api/internal_routes.py
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -25,6 +26,6 @@ async def get_user_internal(
         raise HTTPException(status_code=404, detail="User not found")
     return {
         "user_id": str(profile.user_id),
-        "email":   profile.email,
+        "email": profile.email,
         "username": profile.username,
     }

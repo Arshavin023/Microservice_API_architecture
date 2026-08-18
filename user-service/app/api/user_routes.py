@@ -19,7 +19,9 @@ def _require_self_or_403(authenticated_username: str, profile_username: str) -> 
     authorization scheme (staff/admin override, etc.) is needed.
     """
     if authenticated_username != profile_username:
-        raise HTTPException(status_code=403, detail="Not authorized to access this profile")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this profile"
+        )
 
 
 @router.get("/{user_id}", response_model=UserProfileResponse)

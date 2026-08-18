@@ -15,7 +15,9 @@ from fastapi.responses import JSONResponse
 from fastapi_jwt_auth2.exceptions import AuthJWTException
 
 from app.api.user_routes import router as user_router
-from app.core import jwt_config  # noqa: F401 — triggers @AuthJWT.load_config registration
+from app.core import (
+    jwt_config,
+)  # noqa: F401 — triggers @AuthJWT.load_config registration
 
 from app.api.internal_routes import router as internal_router
 
@@ -23,6 +25,7 @@ from app.api.internal_routes import router as internal_router
 app = FastAPI(title="User Service")
 app.include_router(user_router)
 app.include_router(internal_router)
+
 
 @app.exception_handler(AuthJWTException)
 def authjwt_exception_handler(request: Request, exc: AuthJWTException):

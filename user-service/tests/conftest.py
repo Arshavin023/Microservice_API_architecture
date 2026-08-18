@@ -29,6 +29,7 @@ _test_engine = create_async_engine(
 
 # Patch the session module's engine so the app uses SQLite
 import app.db.session as _session_module
+
 _session_module.engine = _test_engine
 _session_module.SessionLocal = sessionmaker(
     bind=_test_engine,
@@ -71,9 +72,11 @@ async def client(engine):
 
     app.dependency_overrides.clear()
 
+
 def make_token(username: str = "uche", is_staff: bool = False) -> str:
     from fastapi_jwt_auth2 import AuthJWT
     from datetime import timedelta
+
     auth = AuthJWT()
     token = auth.create_access_token(
         subject=username,

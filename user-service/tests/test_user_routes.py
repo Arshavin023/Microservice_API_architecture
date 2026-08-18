@@ -1,6 +1,7 @@
 """
 End-to-end tests for user-service HTTP routes.
 """
+
 import uuid
 import pytest
 import pytest_asyncio
@@ -12,9 +13,10 @@ USERS_URL = "/users"
 
 class SQLStringUUID(str):
     """
-    A string subclass that tricks SQLAlchemy into thinking it's a native UUID object 
+    A string subclass that tricks SQLAlchemy into thinking it's a native UUID object
     by mimicking the `.hex` property, returning the underlying clean string value.
     """
+
     @property
     def hex(self) -> str:
         # If there are hyphens, remove them to behave exactly like uuid.UUID().hex
@@ -36,12 +38,14 @@ async def _seed_profile(db, uid=None, username="uche"):
 
 # ── GET /users/{user_id} ──────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestGetUserProfile:
 
     async def test_get_own_profile_200(self, client, db):
         uid = await _seed_profile(db, username="uche")
         from conftest import make_token
+
         token = make_token(username="uche")
 
         resp = await client.get(
@@ -61,6 +65,7 @@ class TestGetUserProfile:
     async def test_get_other_users_profile_403(self, client, db):
         uid = await _seed_profile(db, username="victim")
         from conftest import make_token
+
         token = make_token(username="attacker")
 
         resp = await client.get(
@@ -71,6 +76,7 @@ class TestGetUserProfile:
 
     async def test_get_nonexistent_profile_404(self, client, db):
         from conftest import make_token
+
         token = make_token(username="uche")
         resp = await client.get(
             f"{USERS_URL}/{_uuid()}",
@@ -81,12 +87,14 @@ class TestGetUserProfile:
 
 # ── PATCH /users/{user_id} ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestUpdateUserProfile:
 
     async def test_update_full_name_200(self, client, db):
         uid = await _seed_profile(db, username="uche")
         from conftest import make_token
+
         token = make_token(username="uche")
 
         resp = await client.patch(
@@ -100,6 +108,7 @@ class TestUpdateUserProfile:
     async def test_patch_is_partial_other_fields_unchanged(self, client, db):
         uid = await _seed_profile(db, username="uche")
         from conftest import make_token
+
         token = make_token(username="uche")
 
         patch_resp = await client.patch(
@@ -117,11 +126,12 @@ class TestUpdateUserProfile:
         assert patch_resp2.status_code == 200
         data = patch_resp2.json()
         assert data["delivery_address"] == "Abuja, FCT"
-        assert data["full_name"] == "Uche Nnodim"   
+        assert data["full_name"] == "Uche Nnodim"
 
     async def test_update_json_field(self, client, db):
         uid = await _seed_profile(db, username="uche")
         from conftest import make_token
+
         token = make_token(username="uche")
 
         prefs = {"vegan": True, "allergens": ["gluten"]}
@@ -136,6 +146,7 @@ class TestUpdateUserProfile:
     async def test_update_other_users_profile_403(self, client, db):
         uid = await _seed_profile(db, username="victim")
         from conftest import make_token
+
         token = make_token(username="attacker")
 
         resp = await client.patch(
@@ -152,6 +163,7 @@ class TestUpdateUserProfile:
 
     async def test_update_nonexistent_profile_404(self, client, db):
         from conftest import make_token
+
         token = make_token(username="uche")
         resp = await client.patch(
             f"{USERS_URL}/{_uuid()}",
@@ -162,6 +174,7 @@ class TestUpdateUserProfile:
 
 
 # ── GET /health ───────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_health_check(client):

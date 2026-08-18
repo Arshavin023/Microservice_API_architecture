@@ -1,8 +1,8 @@
 # import uuid6
 # # 1. Add 'UUID' to the core sqlalchemy imports here:
-# from sqlalchemy import Column, String, DateTime, func, JSON, UUID  
+# from sqlalchemy import Column, String, DateTime, func, JSON, UUID
 # # 2. DELETE OR COMMENT OUT THIS LINE:
-# # from sqlalchemy.dialects.postgresql import UUID  
+# # from sqlalchemy.dialects.postgresql import UUID
 
 # from app.db.base import Base
 

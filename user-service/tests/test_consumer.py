@@ -2,6 +2,7 @@
 Unit tests for the RabbitMQ consumer (_process_message).
 No real broker needed — we call the async function directly and mock the DB.
 """
+
 import json
 import uuid
 import pytest
@@ -11,23 +12,30 @@ from unittest.mock import AsyncMock, patch, MagicMock
 async def _call(body: bytes) -> bool:
     """Import here so env vars are set by conftest first."""
     from app.workers.consumer import _process_message
+
     return await _process_message(body)
 
 
 # ── _process_message ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestProcessMessage:
 
     def _valid_body(self, user_id=None) -> bytes:
-        return json.dumps({
-            "event": "user.registered",
-            "user_id": user_id or str(uuid.uuid4()),
-            "email": "uche@example.com",
-            "username": "uche",
-        }).encode()
+        return json.dumps(
+            {
+                "event": "user.registered",
+                "user_id": user_id or str(uuid.uuid4()),
+                "email": "uche@example.com",
+                "username": "uche",
+            }
+        ).encode()
 
-    @patch("app.workers.consumer.UserProfileService.create_profile_from_event", new_callable=AsyncMock)
+    @patch(
+        "app.workers.consumer.UserProfileService.create_profile_from_event",
+        new_callable=AsyncMock,
+    )
     @patch("app.workers.consumer.AsyncSessionLocal")
     async def test_valid_message_acked(self, mock_session_cls, mock_create):
         mock_create.return_value = True
@@ -38,7 +46,10 @@ class TestProcessMessage:
         result = await _call(self._valid_body())
         assert result is True
 
-    @patch("app.workers.consumer.UserProfileService.create_profile_from_event", new_callable=AsyncMock)
+    @patch(
+        "app.workers.consumer.UserProfileService.create_profile_from_event",
+        new_callable=AsyncMock,
+    )
     @patch("app.workers.consumer.AsyncSessionLocal")
     async def test_duplicate_event_still_acked(self, mock_session_cls, mock_create):
         """Duplicate (idempotent) events must be acked — not requeued."""
@@ -73,7 +84,10 @@ class TestProcessMessage:
         result = await _call(b"")
         assert result is True
 
-    @patch("app.workers.consumer.UserProfileService.create_profile_from_event", new_callable=AsyncMock)
+    @patch(
+        "app.workers.consumer.UserProfileService.create_profile_from_event",
+        new_callable=AsyncMock,
+    )
     @patch("app.workers.consumer.AsyncSessionLocal")
     async def test_db_transient_error_nacked(self, mock_session_cls, mock_create):
         """Transient DB failure → nack so RabbitMQ redelivers."""
@@ -84,7 +98,10 @@ class TestProcessMessage:
         result = await _call(self._valid_body())
         assert result is False
 
-    @patch("app.workers.consumer.UserProfileService.create_profile_from_event", new_callable=AsyncMock)
+    @patch(
+        "app.workers.consumer.UserProfileService.create_profile_from_event",
+        new_callable=AsyncMock,
+    )
     @patch("app.workers.consumer.AsyncSessionLocal")
     async def test_create_called_with_correct_args(self, mock_session_cls, mock_create):
         mock_create.return_value = True
@@ -92,9 +109,11 @@ class TestProcessMessage:
         mock_session_cls.return_value.__aenter__.return_value = mock_session
 
         uid = str(uuid.uuid4())
-        await _call(json.dumps({
-            "user_id": uid, "email": "uche@example.com", "username": "uche"
-        }).encode())
+        await _call(
+            json.dumps(
+                {"user_id": uid, "email": "uche@example.com", "username": "uche"}
+            ).encode()
+        )
 
         mock_create.assert_called_once_with(
             mock_session, user_id=uid, email="uche@example.com", username="uche"

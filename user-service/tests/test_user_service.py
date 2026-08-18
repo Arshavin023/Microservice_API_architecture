@@ -1,6 +1,7 @@
 """
 Unit/integration tests for UserProfileService.
 """
+
 import uuid
 import pytest
 import pytest_asyncio
@@ -15,6 +16,7 @@ def _uuid() -> uuid.UUID:
 
 
 # ── create_profile_from_event ─────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestCreateProfileFromEvent:
@@ -48,6 +50,7 @@ class TestCreateProfileFromEvent:
 
     async def test_duplicate_does_not_create_second_row(self, db):
         from sqlalchemy.future import select
+
         uid = _uuid()
         await UserProfileService.create_profile_from_event(
             db, user_id=uid, email="uche@example.com", username="uche"
@@ -55,13 +58,16 @@ class TestCreateProfileFromEvent:
         await UserProfileService.create_profile_from_event(
             db, user_id=uid, email="uche@example.com", username="uche"
         )
-        rows = (await db.execute(
-            select(UserProfile).where(UserProfile.user_id == uid)
-        )).scalars().all()
+        rows = (
+            (await db.execute(select(UserProfile).where(UserProfile.user_id == uid)))
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
 
 
 # ── get_profile_by_user_id ────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 class TestGetProfile:
@@ -82,6 +88,7 @@ class TestGetProfile:
 
 # ── update_profile ────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 class TestUpdateProfile:
 
@@ -101,7 +108,9 @@ class TestUpdateProfile:
 
     async def test_partial_update_leaves_other_fields_unchanged(self, db):
         profile = await UserProfileService.get_profile_by_user_id(db, self.uid)
-        await UserProfileService.update_profile(db, profile, {"phone": "+2348000000000"})
+        await UserProfileService.update_profile(
+            db, profile, {"phone": "+2348000000000"}
+        )
 
         profile = await UserProfileService.get_profile_by_user_id(db, self.uid)
         assert profile.phone == "+2348000000000"

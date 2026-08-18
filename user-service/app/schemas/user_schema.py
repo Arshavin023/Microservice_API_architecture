@@ -27,6 +27,7 @@ class UserProfileUpdate(BaseModel):
     Only fields the client actually includes get changed; everything
     else on the existing profile is left untouched.
     """
+
     full_name: Optional[str] = None
     phone: Optional[str] = None
     delivery_address: Optional[str] = None

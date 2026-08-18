@@ -59,7 +59,9 @@ async def _process_message(body: bytes) -> bool:
             return False
 
 
-def _on_message(channel, method_frame, properties, body, loop: asyncio.AbstractEventLoop):
+def _on_message(
+    channel, method_frame, properties, body, loop: asyncio.AbstractEventLoop
+):
     should_ack = loop.run_until_complete(_process_message(body))
 
     if should_ack:
@@ -103,11 +105,15 @@ def main():
 
     channel.basic_consume(
         queue=QUEUE_NAME,
-        on_message_callback=lambda ch, method, props, body: _on_message(ch, method, props, body, loop),
+        on_message_callback=lambda ch, method, props, body: _on_message(
+            ch, method, props, body, loop
+        ),
         auto_ack=False,  # manual ack — this is what makes at-least-once delivery meaningful
     )
 
-    logger.info(f"Consumer started. Listening on queue '{QUEUE_NAME}' bound to '{EXCHANGE_NAME}'...")
+    logger.info(
+        f"Consumer started. Listening on queue '{QUEUE_NAME}' bound to '{EXCHANGE_NAME}'..."
+    )
 
     try:
         channel.start_consuming()

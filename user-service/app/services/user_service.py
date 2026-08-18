@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 class UserProfileService:
 
     @staticmethod
-    async def get_profile_by_user_id(db: AsyncSession, user_id: str) -> UserProfile | None:
+    async def get_profile_by_user_id(
+        db: AsyncSession, user_id: str
+    ) -> UserProfile | None:
         result = await db.execute(
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
@@ -67,5 +69,7 @@ class UserProfileService:
             # redelivered the same event. Roll back the failed insert
             # and treat this as a successful no-op, not an error.
             await db.rollback()
-            logger.info(f"Profile already exists for user_id={user_id}, skipping (idempotent)")
+            logger.info(
+                f"Profile already exists for user_id={user_id}, skipping (idempotent)"
+            )
             return False
