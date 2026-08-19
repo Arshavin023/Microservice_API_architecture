@@ -234,7 +234,6 @@ async def confirm_delivery(
 
     order.status = OrderStatus.delivered
     await db.commit()
-    await db.refresh(order)  # <--- Re-populates expired scalar fields asynchronously
 
     return OrderResponse(
         id=cast(UUID, order.id),

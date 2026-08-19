@@ -32,7 +32,7 @@ export default function Register() {
         <div className="text-center mb-8">
           <Pizza className="w-10 h-10 text-brand-600 mx-auto mb-3" />
           <h1 className="text-2xl font-bold">Create account</h1>
-          <p className="text-gray-500 text-sm mt-1">Join Pizzasale today</p>
+          <p className="text-gray-500 text-sm mt-1">Join Chop Now today</p>
         </div>
 
         {success && (

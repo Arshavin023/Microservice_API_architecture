@@ -1,0 +1,1029 @@
+tests/test_order_routes.py::TestConfirmDelivery::test_customer_can_confirm_awaiting_confirmation_order FAILED [100%]
+
+=================================== FAILURES ===================================
+__ TestConfirmDelivery.test_customer_can_confirm_awaiting_confirmation_order ___
+
+self = <tests.test_order_routes.TestConfirmDelivery object at 0x7dcaaaf52cf0>
+client = <httpx.AsyncClient object at 0x7dcaaafd6000>
+db = <sqlalchemy.orm.session.AsyncSession object at 0x7dcaaafa89b0>
+
+    async def test_customer_can_confirm_awaiting_confirmation_order(self, client, db):
+        from app.models.order import OrderStatus
+        user_id = uuid.uuid4()
+        order = await self._create_order(db, user_id, OrderStatus.awaiting_confirmation)
+        token = make_token(user_id=str(user_id), username="testuser")
+>       resp = await client.patch(
+            f"{ORDERS_URL}/{order.id}/confirm-delivery",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+tests/test_order_routes.py:1158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <httpx.AsyncClient object at 0x7dcaaafd6000>
+url = '/orders/01a01ba4-a202-72b2-950d-2a358c38cb4b/confirm-delivery'
+content = None, data = None, files = None, json = None, params = None
+headers = {'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0dXNlciIsInVzZXJfaWQiOiI5YWVmODE3My0xNTI...3ODcxNzE5NjksImp0aSI6ImFjODE2ZjhkLTg2YzAtNDAzYS1iYWYxLTFmN2VlNTYzNTk2MiJ9.xQ-2fqghdtaGapRG43U4OqJatceyptqy38oFGit2MKE'}
+cookies = None, auth = <httpx._client.UseClientDefault object at 0x7dcaac29acf0>
+follow_redirects = <httpx._client.UseClientDefault object at 0x7dcaac29acf0>
+timeout = <httpx._client.UseClientDefault object at 0x7dcaac29acf0>
+extensions = None
+
+--
+            raise RuntimeError("Cannot send a request, as the client has been closed.")
+    
+        self._state = ClientState.OPENED
+        follow_redirects = (
+            self.follow_redirects
+            if isinstance(follow_redirects, UseClientDefault)
+            else follow_redirects
+        )
+    
+        self._set_timeout(request)
+    
+        auth = self._build_request_auth(request, auth)
+    
+>       response = await self._send_handling_auth(
+            request,
+            auth=auth,
+            follow_redirects=follow_redirects,
+            history=[],
+        )
+
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1629: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <httpx.AsyncClient object at 0x7dcaaafd6000>
+request = <Request('PATCH', 'http://test/orders/01a01ba4-a202-72b2-950d-2a358c38cb4b/confirm-delivery')>
+auth = <httpx.Auth object at 0x7dcaaaefa3f0>, follow_redirects = False
+history = []
+
+    async def _send_handling_auth(
+        self,
+        request: Request,
+--
+            raise RuntimeError(
+                "Attempted to send an sync request with an AsyncClient instance."
+            )
+    
+        with request_context(request=request):
+>           response = await transport.handle_async_request(request)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1730: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <httpx.ASGITransport object at 0x7dcaabd05ac0>
+request = <Request('PATCH', 'http://test/orders/01a01ba4-a202-72b2-950d-2a358c38cb4b/confirm-delivery')>
+
+    async def handle_async_request(
+        self,
+        request: Request,
+    ) -> Response:
+        assert isinstance(request.stream, AsyncByteStream)
+    
+        # ASGI scope.
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": request.method,
+            "headers": [(k.lower(), v) for (k, v) in request.headers.raw],
+            "scheme": request.url.scheme,
+            "path": request.url.path,
+            "raw_path": request.url.raw_path.split(b"?")[0],
+            "query_string": request.url.query,
+            "server": (request.url.host, request.url.port),
+            "client": self.client,
+            "root_path": self.root_path,
+        }
+    
+        # Request.
+        request_body_chunks = request.stream.__aiter__()
+        request_complete = False
+    
+        # Response.
+        status_code = None
+        response_headers = None
+        body_parts = []
+        response_started = False
+        response_complete = create_event()
+    
+        # ASGI callables.
+    
+--
+                assert not response_started
+    
+                status_code = message["status"]
+                response_headers = message.get("headers", [])
+                response_started = True
+    
+            elif message["type"] == "http.response.body":
+                assert not response_complete.is_set()
+                body = message.get("body", b"")
+                more_body = message.get("more_body", False)
+    
+                if body and request.method != "HEAD":
+                    body_parts.append(body)
+    
+                if not more_body:
+                    response_complete.set()
+    
+        try:
+>           await self.app(scope, receive, send)
+
+/usr/local/lib/python3.12/site-packages/httpx/_transports/asgi.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <fastapi.applications.FastAPI object at 0x7dcaab02e240>
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function ASGITransport.handle_async_request.<locals>.send at 0x7dcaaaaede40>
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if self.root_path:
+            scope["root_path"] = self.root_path
+>       await super().__call__(scope, receive, send)
+
+/usr/local/lib/python3.12/site-packages/fastapi/applications.py:1163: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <fastapi.applications.FastAPI object at 0x7dcaab02e240>
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+--
+self = <starlette.middleware.errors.ServerErrorMiddleware object at 0x7dcaaaafc290>
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function ASGITransport.handle_async_request.<locals>.send at 0x7dcaaaaede40>
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+    
+        response_started = False
+    
+        async def _send(message: Message) -> None:
+            nonlocal response_started, send
+    
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+    
+        try:
+            await self.app(scope, receive, _send)
+        except Exception as exc:
+            request = Request(scope)
+            if self.debug:
+                # In debug mode, return traceback responses.
+                response = self.debug_response(request, exc)
+            elif self.handler is None:
+                # Use our default 500 error handler.
+                response = self.error_response(request, exc)
+            else:
+                # Use an installed 500 error handler.
+--
+self = <starlette.middleware.errors.ServerErrorMiddleware object at 0x7dcaaaafc290>
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function ASGITransport.handle_async_request.<locals>.send at 0x7dcaaaaede40>
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+    
+        response_started = False
+    
+        async def _send(message: Message) -> None:
+            nonlocal response_started, send
+    
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+    
+        try:
+>           await self.app(scope, receive, _send)
+
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:164: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <starlette.middleware.exceptions.ExceptionMiddleware object at 0x7dcaaaafc230>
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function ServerErrorMiddleware.__call__.<locals>._send at 0x7dcaaaaeda80>
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+    
+        scope["starlette.exception_handlers"] = (
+            self._exception_handlers,
+            self._status_handlers,
+        )
+    
+        conn: Request | WebSocket
+        if scope["type"] == "http":
+            conn = Request(scope, receive, send)
+        else:
+            conn = WebSocket(scope, receive, send)
+    
+>       await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+
+/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function ServerErrorMiddleware.__call__.<locals>._send at 0x7dcaaaaeda80>
+
+    async def wrapped_app(scope: Scope, receive: Receive, send: Send) -> None:
+        response_started = False
+    
+        async def sender(message: Message) -> None:
+            nonlocal response_started
+    
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+    
+        try:
+            await app(scope, receive, sender)
+        except Exception as exc:
+            handler = None
+    
+            if isinstance(exc, HTTPException):
+                handler = status_handlers.get(exc.status_code)
+    
+            if handler is None:
+                handler = _lookup_exception_handler(exception_handlers, exc)
+    
+            if handler is None:
+>               raise exc
+
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:53: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function ServerErrorMiddleware.__call__.<locals>._send at 0x7dcaaaaeda80>
+
+    async def wrapped_app(scope: Scope, receive: Receive, send: Send) -> None:
+        response_started = False
+    
+        async def sender(message: Message) -> None:
+            nonlocal response_started
+    
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+    
+        try:
+>           await app(scope, receive, sender)
+
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <fastapi.middleware.asyncexitstack.AsyncExitStackMiddleware object at 0x7dcaaaafc200>
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x7dcaaaaedbc0>
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        async with AsyncExitStack() as stack:
+            scope[self.context_name] = stack
+>           await self.app(scope, receive, send)
+
+/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+--
+        assert scope["type"] in ("http", "websocket", "lifespan")
+    
+        if "router" not in scope:
+            scope["router"] = self
+    
+        if scope["type"] == "lifespan":
+            await self.lifespan(scope, receive, send)
+            return
+    
+        partial: tuple[BaseRoute, Scope] | None = None
+        for route in self.routes:
+            match, child_scope = route.matches(scope)
+            if match == Match.FULL:
+                scope.update(child_scope)
+>               await route.handle(scope, receive, send)
+
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:2734: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = _IncludedRouter(original_router=<fastapi.routing.APIRouter object at 0x7dcaac696ff0>, include_context=_RouterIncludeCo...lse)], _effective_candidates_version=9, _effective_low_priority_routes=[], _effective_low_priority_routes_version=None)
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x7dcaaaaedbc0>
+
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+        _get_fastapi_scope(scope)[_FASTAPI_INCLUDED_ROUTER_KEY] = self
+>       await self.original_router.handle(scope, receive, send)
+
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:1780: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+--
+                raise FastAPIError(
+                    "Response not awaited. There's a high chance that the "
+                    "application code is raising an exception and a dependency with yield "
+                    "has a block with a bare except, or a block with except Exception, "
+                    "and is not raising the exception again. Read more about it in the "
+                    "docs: https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/#dependencies-with-yield-and-except"
+                )
+    
+        # Same as in Starlette
+>       await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scope = {'type': 'http', 'asgi': {'version': '3.0'}, 'http_version': '1.1', 'method': 'PATCH', ...}
+receive = <function ASGITransport.handle_async_request.<locals>.receive at 0x7dcaaaaedda0>
+send = <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x7dcaaaaedbc0>
+
+    async def wrapped_app(scope: Scope, receive: Receive, send: Send) -> None:
+        response_started = False
+    
+        async def sender(message: Message) -> None:
+            nonlocal response_started
+    
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+    
+        try:
+            await app(scope, receive, sender)
+        except Exception as exc:
+--
+        assert isinstance(file_stack, AsyncExitStack), (
+            "fastapi_middleware_astack not found in request scope"
+        )
+    
+        # Extract endpoint context for error messages
+        endpoint_ctx = (
+            _extract_endpoint_context(dependant.call)
+            if dependant.call
+            else EndpointContext()
+        )
+    
+        if dependant.path:
+            # For mounted sub-apps, include the mount path prefix
+            mount_path = request.scope.get("root_path", "").rstrip("/")
+            endpoint_ctx["path"] = f"{request.method} {mount_path}{dependant.path}"
+    
+        # Read body and auto-close files
+        try:
+            body: Any = None
+            if body_field:
+                if is_body_form:
+                    body = await request.form()
+                    file_stack.push_async_callback(body.close)
+                else:
+                    body_bytes = await request.body()
+                    if body_bytes:
+                        json_body: Any = Undefined
+                        content_type_value = request.headers.get("content-type")
+                        if not content_type_value:
+                            if not actual_strict_content_type:
+                                json_body = await request.json()
+--
+        except json.JSONDecodeError as e:
+            validation_error = RequestValidationError(
+                [
+                    {
+                        "type": "json_invalid",
+                        "loc": ("body", e.pos),
+                        "msg": "JSON decode error",
+                        "input": {},
+                        "ctx": {"error": e.msg},
+                    }
+                ],
+                body=e.doc,
+                endpoint_ctx=endpoint_ctx,
+            )
+            raise validation_error from e
+        except HTTPException:
+            # If a middleware raises an HTTPException, it should be raised again
+            raise
+        except Exception as e:
+            http_error = HTTPException(
+                status_code=400, detail="There was an error parsing the body"
+            )
+            raise http_error from e
+    
+        # Solve dependencies and run path operation function, auto-closing dependencies
+        errors: list[Any] = []
+        async_exit_stack = request.scope.get("fastapi_inner_astack")
+        assert isinstance(async_exit_stack, AsyncExitStack), (
+            "fastapi_inner_astack not found in request scope"
+        )
+        solved_result = await solve_dependencies(
+            request=request,
+            dependant=dependant,
+            body=cast(dict[str, Any] | FormData | bytes | None, body),
+            dependency_overrides_provider=dependency_overrides_provider,
+            async_exit_stack=async_exit_stack,
+            embed_body_fields=embed_body_fields,
+        )
+        errors = solved_result.errors
+        assert dependant.call  # For types
+        if not errors:
+            # Shared serializer for stream items (JSONL and SSE).
+            # Validates against stream_item_field when set, then
+            # serializes to JSON bytes.
+            def _serialize_data(data: Any) -> bytes:
+                if stream_item_field:
+                    value, errors_ = stream_item_field.validate(
+                        data, {}, loc=("response",)
+                    )
+                    if errors_:
+                        ctx = endpoint_ctx or EndpointContext()
+                        raise ResponseValidationError(
+                            errors=errors_,
+                            body=data,
+                            endpoint_ctx=ctx,
+                        )
+                    return stream_item_field.serialize_json(
+                        value,
+                        include=response_model_include,
+                        exclude=response_model_exclude,
+                        by_alias=response_model_by_alias,
+                        exclude_unset=response_model_exclude_unset,
+                        exclude_defaults=response_model_exclude_defaults,
+                        exclude_none=response_model_exclude_none,
+                    )
+                else:
+                    data = jsonable_encoder(data)
+                    return json.dumps(data).encode("utf-8")
+    
+            if is_sse_stream:
+                # Generator endpoint: stream as Server-Sent Events
+                gen = dependant.call(**solved_result.values)
+    
+                def _serialize_sse_item(item: Any) -> bytes:
+                    if isinstance(item, ServerSentEvent):
+                        # User controls the event structure.
+                        # Serialize the data payload if present.
+                        # For ServerSentEvent items we skip stream_item_field
+                        # validation (the user may mix types intentionally).
+                        if item.raw_data is not None:
+                            data_str: str | None = item.raw_data
+                        elif item.data is not None:
+--
+                    # `__anext__` directly - avoiding CancelledError that
+                    # would finalize the generator and also working for sync
+                    # generators running in a thread pool.
+                    #
+                    # This context manager is entered on the request-scoped
+                    # AsyncExitStack so its __aexit__ (which cancels the
+                    # task group) is called by the exit stack after the
+                    # streaming response completes — not by async generator
+                    # finalization via GeneratorExit.
+                    # Ref: https://peps.python.org/pep-0789/
+                    send_stream, receive_stream = anyio.create_memory_object_stream[
+                        bytes
+                    ](max_buffer_size=1)
+    
+                    async def _producer() -> None:
+                        async with send_stream:
+                            async for raw_item in sse_aiter:
+                                await send_stream.send(_serialize_sse_item(raw_item))
+    
+                    send_keepalive, receive_keepalive = (
+                        anyio.create_memory_object_stream[bytes](max_buffer_size=1)
+                    )
+    
+                    async def _keepalive_inserter() -> None:
+                        """Read from the producer and forward to the output,
+                        inserting keepalive comments on timeout."""
+                        async with send_keepalive, receive_stream:
+                            try:
+                                while True:
+                                    try:
+                                        with anyio.fail_after(_PING_INTERVAL):
+--
+                                    except TimeoutError:
+                                        await send_keepalive.send(KEEPALIVE_COMMENT)
+                            except anyio.EndOfStream:
+                                pass
+    
+                    async with anyio.create_task_group() as tg:
+                        tg.start_soon(_producer)
+                        tg.start_soon(_keepalive_inserter)
+                        yield receive_keepalive
+                        tg.cancel_scope.cancel()
+    
+                # Enter the SSE context manager on the request-scoped
+                # exit stack. The stack outlives the streaming response,
+                # so __aexit__ runs via proper structured teardown, not
+                # via GeneratorExit thrown into an async generator.
+                sse_receive_stream = await async_exit_stack.enter_async_context(
+                    _sse_producer_cm()
+                )
+                # Ensure the receive stream is closed when the exit stack
+                # unwinds, preventing ResourceWarning from __del__.
+                async_exit_stack.push_async_callback(sse_receive_stream.aclose)
+    
+                async def _sse_with_checkpoints(
+                    stream: ObjectReceiveStream[bytes],
+                ) -> AsyncIterator[bytes]:
+                    async for data in stream:
+                        yield data
+                        # Guarantee a checkpoint so cancellation can be
+                        # delivered even when the producer is faster than
+                        # the consumer and receive() never suspends.
+                        await anyio.sleep(0)
+--
+        assert dependant.call is not None, "dependant.call must be a function"
+    
+        if is_coroutine:
+>           return await dependant.call(**values)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:352: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+order_id = '01a01ba4-a202-72b2-950d-2a358c38cb4b'
+db = <sqlalchemy.orm.session.AsyncSession object at 0x7dcaaafa89b0>
+user_id = UUID('9aef8173-1521-47f0-b8c2-401f1cc79a47')
+
+    @router.patch("/orders/{order_id}/confirm-delivery", response_model=OrderResponse)
+    async def confirm_delivery(
+        order_id: str,
+        db: AsyncSession = Depends(get_db),
+        user_id: UUID = Depends(get_current_user_id),
+    ) -> OrderResponse:
+        """Customer confirms they received their order."""
+        uid = _parse_uuid(order_id, "order_id")
+        result = await db.execute(
+            select(Order)
+            .where(Order.id == uid, Order.user_id == user_id)
+            .options(selectinload(Order.items))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+    
+        if cast(OrderStatus, order.status).value != "awaiting_confirmation":
+--
+            except AttributeError as err:
+                raise orm_exc.UnmappedInstanceError(instance) from err
+>           return self.impl.get(state, dict_)  # type: ignore[no-any-return]
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/attributes.py:569: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.orm.attributes.ScalarAttributeImpl object at 0x7dcaaaad4360>
+state = <sqlalchemy.orm.state.InstanceState object at 0x7dcaab0df4d0>
+dict_ = {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x7dcaab0df4d0>, 'user_id': UUID('9aef8173-1521-47f0-b8c2-401f1cc79a47'), 'status': <OrderStatus.delivered: 'delivered'>, 'total_amount': 1500, ...}
+passive = symbol('PASSIVE_OFF')
+
+    def get(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        passive: PassiveFlag = PASSIVE_OFF,
+    ) -> Any:
+        """Retrieve a value from the given object.
+        If a callable is assembled on this object's attribute, and
+        passive is False, the callable will be executed and the
+        resulting value will be set as the new value for this attribute.
+        """
+        if self.key in dict_:
+            return dict_[self.key]
+        else:
+            # if history present, don't load
+            key = self.key
+            if (
+                key not in state.committed_state
+                or state.committed_state[key] is NO_VALUE
+--
+        # assert mapper is _state_mapper(state)
+        session = state.session
+        if not session:
+            raise orm_exc.DetachedInstanceError(
+                "Instance %s is not bound to a Session; "
+                "attribute refresh operation cannot proceed" % (state_str(state))
+            )
+    
+        no_autoflush = bool(passive & attributes.NO_AUTOFLUSH)
+    
+        # in the case of inheritance, particularly concrete and abstract
+        # concrete inheritance, the class manager might have some keys
+        # of attributes on the superclass that we didn't actually map.
+        # These could be mapped as "concrete, don't load" or could be completely
+        # excluded from the mapping and we know nothing about them.  Filter them
+        # here to prevent them from coming through.
+        if attribute_names:
+            attribute_names = attribute_names.intersection(mapper.attrs.keys())
+    
+        if mapper.inherits and not mapper.concrete:
+            # load based on committed attributes in the object, formed into
+            # a truncated SELECT that only includes relevant tables.  does not
+            # currently use state.key
+            statement = mapper._optimized_get_statement(state, attribute_names)
+            if statement is not None:
+                # undefer() isn't needed here because statement has the
+                # columns needed already, this implicitly undefers that column
+                stmt = FromStatement(mapper, statement)
+    
+                return load_on_ident(
+                    session,
+                    stmt,
+                    None,
+                    only_load_props=attribute_names,
+--
+                raise sa_exc.InvalidRequestError(
+                    "Instance %s cannot be refreshed - it's not "
+                    " persistent and does not "
+                    "contain a full primary key." % state_str(state)
+                )
+            identity_key = mapper._identity_key_from_state(state)
+    
+        if (
+            _none_set.issubset(identity_key) and not mapper.allow_partial_pks
+        ) or _none_set.issuperset(identity_key):
+            util.warn_limited(
+                "Instance %s to be refreshed doesn't "
+                "contain a full primary key - can't be refreshed "
+                "(and shouldn't be expired, either).",
+                state_str(state),
+            )
+            return
+    
+>       result = load_on_ident(
+            session,
+            select(mapper).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            identity_key,
+            refresh_state=state,
+            only_load_props=attribute_names,
+            no_autoflush=no_autoflush,
+        )
+
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:1674: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+session = <sqlalchemy.orm.session.Session object at 0x7dcaab0a91f0>
+--
+        assert not q._is_lambda_element
+    
+        if load_options is None:
+            load_options = QueryContext.default_load_options
+    
+        if (
+            statement._compile_options
+            is SelectState.default_select_compile_options
+        ):
+            compile_options = ORMCompileState.default_compile_options
+        else:
+            compile_options = statement._compile_options
+    
+        if primary_key_identity is not None:
+            mapper = query._propagate_attrs["plugin_subject"]
+    
+            _get_clause, _get_params = mapper._get_clause
+    
+            # None present in ident - turn those comparisons
+            # into "IS NULL"
+            if None in primary_key_identity:
+                nones = {
+                    _get_params[col].key
+                    for col, value in zip(mapper.primary_key, primary_key_identity)
+                    if value is None
+                }
+    
+                _get_clause = sql_util.adapt_criterion_to_null(_get_clause, nones)
+    
+                if len(nones) == len(primary_key_identity):
+                    util.warn(
+--
+                raise sa_exc.ArgumentError(
+                    "refresh_state is required when require_pk_cols is present"
+                )
+    
+            refresh_state_prokeys = refresh_state.mapper._primary_key_propkeys
+            has_changes = {
+                key
+                for key in refresh_state_prokeys.difference(only_load_props)
+                if refresh_state.attrs[key].history.has_changes()
+            }
+            if has_changes:
+                # raise if pending pk changes are present.
+                # technically, this could be limited to the case where we have
+                # relationships in the only_load_props collection to be refreshed
+                # also (and only ones that have a secondary eager loader, at that).
+                # however, the error is in place across the board so that behavior
+                # here is easier to predict.   The use case it prevents is one
+                # of mutating PK attrs, leaving them unflushed,
+                # calling session.refresh(), and expecting those attrs to remain
+                # still unflushed.   It seems likely someone doing all those
+                # things would be better off having the PK attributes flushed
+                # to the database before tinkering like that (session.refresh() is
+                # tinkering).
+                raise sa_exc.InvalidRequestError(
+                    f"Please flush pending primary key changes on "
+                    "attributes "
+                    f"{has_changes} for mapper {refresh_state.mapper} before "
+                    "proceeding with a refresh"
+                )
+    
+            # overall, the ORM has no internal flow right now for "dont load the
+            # primary row of an object at all, but fire off
+            # selectinload/subqueryload/immediateload for some relationships".
+            # It would probably be a pretty big effort to add such a flow.  So
+            # here, the case for #8703 is introduced; user asks to refresh some
+            # relationship attributes only which are
+            # selectinload/subqueryload/immediateload/ etc. (not joinedload).
+            # ORM complains there's no columns in the primary row to load.
+            # So here, we just add the PK cols if that
+            # case is detected, so that there is a SELECT emitted for the primary
+            # row.
+            #
+            # Let's just state right up front, for this one little case,
+            # the ORM here is adding a whole extra SELECT just to satisfy
+            # limitations in the internal flow.  This is really not a thing
+            # SQLAlchemy finds itself doing like, ever, obviously, we are
+            # constantly working to *remove* SELECTs we don't need.   We
+            # rationalize this for now based on 1. session.refresh() is not
+            # commonly used 2. session.refresh() with only relationship attrs is
+            # even less commonly used 3. the SELECT in question is very low
+            # latency.
+            #
+            # to add the flow to not include the SELECT, the quickest way
+            # might be to just manufacture a single-row result set to send off to
+--
+                assert isinstance(
+                    compile_state_cls, context.AbstractORMCompileState
+                )
+        else:
+            compile_state_cls = None
+            bind_arguments.setdefault("clause", statement)
+    
+        execution_options = util.coerce_to_immutabledict(execution_options)
+    
+        if _parent_execute_state:
+            events_todo = _parent_execute_state._remaining_events()
+        else:
+            events_todo = self.dispatch.do_orm_execute
+            if _add_event:
+                events_todo = list(events_todo) + [_add_event]
+    
+        if events_todo:
+            # save the original execution options before
+            # orm_pre_session_exec processes them, so that we can pass
+            # the unprocessed options (plus any explicit updates from event
+            # hooks) to the second orm_pre_session_exec call.  This
+            # prevents internal state like _sa_orm_load_options and
+            # yield_per from the first call leaking into the second call,
+            # which would otherwise cause issues like yield_per incorrectly
+            # propagating into post-load (selectinload etc.) queries.
+            # part of #13301.
+            original_execution_options = execution_options
+    
+            if compile_state_cls is not None:
+                # for event handlers, do the orm_pre_session_exec
+                # pass ahead of the event handlers, so that things like
+--
+        except AttributeError as err:
+            raise exc.ObjectNotExecutableError(statement) from err
+        else:
+>           return meth(
+                self,
+                distilled_parameters,
+                execution_options or NO_OPTIONS,
+            )
+
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1421: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.sql.selectable.Select object at 0x7dcaaaac5730>
+connection = <sqlalchemy.engine.base.Connection object at 0x7dcaaaaff950>
+distilled_params = [{'pk_1': UUID('01a01ba4-a202-72b2-950d-2a358c38cb4b')}]
+execution_options = immutabledict({'_sa_orm_load_options': default_load_options(_refresh_state=<sqlalchemy.orm.state.InstanceState object at 0x7dcaab0df4d0>), '_result_disable_adapt_to_context': True})
+
+    def _execute_on_connection(
+        self,
+        connection: Connection,
+        distilled_params: _CoreMultiExecuteParams,
+        execution_options: CoreExecuteOptionsParameter,
+    ) -> Result[Any]:
+        if self.supports_execution:
+            if TYPE_CHECKING:
+                assert isinstance(self, Executable)
+>           return connection._execute_clauseelement(
+                self, distilled_params, execution_options
+            )
+
+/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:526: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.engine.base.Connection object at 0x7dcaaaaff950>
+elem = <sqlalchemy.sql.selectable.Select object at 0x7dcaaaac5730>
+distilled_parameters = [{'pk_1': UUID('01a01ba4-a202-72b2-950d-2a358c38cb4b')}]
+execution_options = immutabledict({'_sa_orm_load_options': default_load_options(_refresh_state=<sqlalchemy.orm.state.InstanceState object at 0x7dcaab0df4d0>), '_result_disable_adapt_to_context': True})
+
+    def _execute_clauseelement(
+        self,
+        elem: Executable,
+        distilled_parameters: _CoreMultiExecuteParams,
+        execution_options: CoreExecuteOptionsParameter,
+    ) -> CursorResult[Any]:
+        """Execute a sql.ClauseElement object."""
+    
+        execution_options = elem._execution_options.merge_with(
+            self._execution_options, execution_options
+        )
+    
+        has_events = self._has_events or self.engine._has_events
+        if has_events:
+            (
+                elem,
+                distilled_parameters,
+                event_multiparams,
+--
+        except (exc.PendingRollbackError, exc.ResourceClosedError):
+            raise
+        except BaseException as e:
+            self._handle_dbapi_exception(
+                e, str(statement), parameters, None, None
+            )
+    
+        if (
+            self._transaction
+            and not self._transaction.is_active
+            or (
+                self._nested_transaction
+                and not self._nested_transaction.is_active
+            )
+        ):
+            self._invalid_transaction()
+    
+        elif self._trans_context_manager:
+            TransactionalContext._trans_ctx_check(self)
+    
+        if self._transaction is None:
+            self._autobegin()
+    
+        context.pre_exec()
+    
+        if context.execute_style is ExecuteStyle.INSERTMANYVALUES:
+            return self._exec_insertmany_context(dialect, context)
+        else:
+>           return self._exec_single_context(
+                dialect, context, statement, parameters
+            )
+--
+                isinstance(e, self.dialect.loaded_dbapi.Error)
+                and not self.closed
+                and self.dialect.is_disconnect(
+                    e,
+                    self._dbapi_connection if not self.invalidated else None,
+                    cursor,
+                )
+            ) or (is_exit_exception and not self.closed)
+    
+        invalidate_pool_on_disconnect = not is_exit_exception
+    
+        ismulti: bool = (
+            not is_sub_exec and context.executemany
+            if context is not None
+            else False
+        )
+        if self._reentrant_error:
+            raise exc.DBAPIError.instance(
+                statement,
+                parameters,
+                e,
+                self.dialect.loaded_dbapi.Error,
+                hide_parameters=self.engine.hide_parameters,
+                dialect=self.dialect,
+                ismulti=ismulti,
+            ).with_traceback(exc_info[2]) from e
+        self._reentrant_error = True
+        try:
+            # non-DBAPI error - if we already got a context,
+            # or there's no string statement, don't wrap it
+            should_wrap = isinstance(e, self.dialect.loaded_dbapi.Error) or (
+                statement is not None
+                and context is None
+                and not is_exit_exception
+            )
+    
+            if should_wrap:
+                sqlalchemy_exception = exc.DBAPIError.instance(
+                    statement,
+                    parameters,
+                    cast(Exception, e),
+                    self.dialect.loaded_dbapi.Error,
+                    hide_parameters=self.engine.hide_parameters,
+                    connection_invalidated=self._is_disconnect,
+                    dialect=self.dialect,
+                    ismulti=ismulti,
+                )
+            else:
+                sqlalchemy_exception = None
+    
+            newraise = None
+    
+            if (self.dialect._has_events) and not self._execution_options.get(
+                "skip_user_error_events", False
+            ):
+                ctx = ExceptionContextImpl(
+                    e,
+                    sqlalchemy_exception,
+                    self.engine,
+                    self.dialect,
+                    self,
+                    cursor,
+                    statement,
+                    parameters,
+                    context,
+                    self._is_disconnect,
+                    invalidate_pool_on_disconnect,
+                    False,
+                )
+    
+                for fn in self.dialect.dispatch.handle_error:
+                    try:
+--
+                assert sqlalchemy_exception is not None
+                raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+            else:
+                assert exc_info[1] is not None
+>               raise exc_info[1].with_traceback(exc_info[2])
+
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2368: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.engine.base.Connection object at 0x7dcaaaaff950>
+dialect = <sqlalchemy.dialects.sqlite.aiosqlite.SQLiteDialect_aiosqlite object at 0x7dcaaaf89910>
+context = <sqlalchemy.dialects.sqlite.aiosqlite.SQLiteExecutionContext_aiosqlite object at 0x7dcaaaaffa70>
+statement = <sqlalchemy.dialects.sqlite.base.SQLiteCompiler object at 0x7dcaaaaff740>
+parameters = [('01a01ba4-a202-72b2-950d-2a358c38cb4b',)]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+--
+            isinstance(error, ValueError)
+            and error.args[0] == "no active connection"
+        ):
+            raise self.dbapi.sqlite.OperationalError(
+                "no active connection"
+            ) from error
+        else:
+>           raise error
+
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:373: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.dialects.sqlite.aiosqlite.AsyncAdapt_aiosqlite_cursor object at 0x7dcaaaacf700>
+operation = 'SELECT orders.updated_at AS orders_updated_at \nFROM orders \nWHERE orders.id = ?'
+parameters = ('01a01ba4-a202-72b2-950d-2a358c38cb4b',)
+
+    def execute(
+        self,
+        operation: Any,
+        parameters: Optional[_DBAPISingleExecuteParams] = None,
+    ) -> Any:
+    
+        try:
+>           _cursor: AsyncIODBAPICursor = self.await_(self._connection.cursor())  # type: ignore[arg-type] # noqa: E501
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+awaitable = <aiosqlite.context.Result object at 0x7dcaaab19190>
+
+    def await_only(awaitable: Awaitable[_T]) -> _T:
+        """Awaits an async function in a sync method.
+    
+--
+FAILED tests/test_order_routes.py::TestConfirmDelivery::test_customer_can_confirm_awaiting_confirmation_order
+======================== 1 failed, 10 warnings in 2.24s ========================

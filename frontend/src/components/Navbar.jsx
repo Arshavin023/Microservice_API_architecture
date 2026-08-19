@@ -20,7 +20,7 @@ export default function Navbar({ cartCount = 0 }) {
           <div className="w-9 h-9 bg-[#FF6B35] rounded-xl flex items-center justify-center">
             <Pizza className="w-5 h-5 text-white" />
           </div>
-          <span className="font-display font-bold text-xl text-[#1A1A2E]">Pizzasale</span>
+          <span className="font-display font-bold text-xl text-[#1A1A2E]">Chop Now</span>
         </Link>
 
         {/* Nav links — desktop */}
