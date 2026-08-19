@@ -23,8 +23,26 @@ class PaymentService:
         Returns the payment record containing the authorization_url to redirect
         the user to Paystack's hosted payment page.
         """
-        # Generate a unique reference for this payment attempt.
-        # Using uuid4 ensures it's unique even on retry.
+        # ── Idempotency check ─────────────────────────────────────────────────
+        # If a payment already exists for this order and is still pending or
+        # already succeeded, return it immediately without creating a new
+        # Paystack transaction. This handles the case where:
+        #   1. User checks out, Paystack transaction is created
+        #   2. Request times out on the user's side
+        #   3. User clicks "Pay" again — we return the SAME authorization_url
+        #      instead of charging them twice
+        existing = await db.execute(
+            select(Payment).where(
+                Payment.order_id == uuid.UUID(order_id),
+                Payment.status.in_(["pending", "succeeded"]),
+            )
+        )
+        existing_payment = existing.scalar_one_or_none()
+        if existing_payment:
+            return existing_payment
+        # ── End idempotency check ──────────────────────────────────────────────
+
+        
         reference = f"PIZZA-{str(uuid.uuid4()).replace('-', '')[:16].upper()}"
 
         try:
