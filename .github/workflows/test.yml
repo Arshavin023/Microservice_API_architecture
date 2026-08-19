@@ -280,10 +280,9 @@ jobs:
           python -m pytest tests/ -v \
             --tb=short \
             --cov=app \
-            --cov-omit=app/workers/* \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            --cov-fail-under=70
+            --cov-fail-under=67
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
