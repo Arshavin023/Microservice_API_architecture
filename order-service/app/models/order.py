@@ -23,9 +23,8 @@ class OrderStatus(str, enum.Enum):
     shipped = "shipped"  # shipping-service will drive this later
     delivered = "delivered"  # shipping-service will drive this later
     cancelled = "cancelled"
-    awaiting_confirmation = (
-        "awaiting_confirmation"  # new status added in ord002 migration
-    )
+    awaiting_confirmation = "awaiting_confirmation"
+    disputed = "disputed"  # customer reports non-delivery
 
 
 class Order(Base):

@@ -269,14 +269,28 @@ services:
       DATABASE_URL:          ${NOTIFICATION_DATABASE_URL}
       RABBITMQ_URL:          amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
       USER_SERVICE_URL:      http://user-service:8000
-      AWS_REGION:            ${AWS_REGION}
+      RESEND_API_KEY:        ${RESEND_API_KEY}
       SES_SENDER_EMAIL:      ${SES_SENDER_EMAIL}
-      AWS_ACCESS_KEY_ID:     ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./notification-service:/app
       
+  realtime-service:
+    build: ./realtime-service
+    container_name: realtime-service
+    restart: always
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 8007
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "8007:8007"
+
 volumes:
   rabbitmq_data:
+
+

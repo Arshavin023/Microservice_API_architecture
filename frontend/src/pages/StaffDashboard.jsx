@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Truck, Package, CheckCircle, ChevronDown, ChevronUp, Clock } from 'lucide-react'
+import { Loader2, Truck, Package, CheckCircle, ChevronDown, ChevronUp, Clock, AlertTriangle } from 'lucide-react'
 import { ordersApi, shippingApi } from '../api'
 import { useAuth } from '../context/AuthContext'
 
@@ -15,6 +15,8 @@ function ShipmentCard({ order, shipment, onRefresh }) {
   const [working,  setWorking]  = useState(false)
   const [form,     setForm]     = useState({ driver_name: '', driver_phone: '', tracking_note: '' })
   const [error,    setError]    = useState('')
+
+  const isDisputed = order.status === 'disputed'
 
   const dispatch = async () => {
     setWorking(true); setError('')
@@ -47,13 +49,17 @@ function ShipmentCard({ order, shipment, onRefresh }) {
   }
 
   return (
-    <div className="card overflow-hidden">
+    <div className={`card overflow-hidden ${isDisputed ? 'border-red-300 bg-red-50/30' : ''}`}>
       <button
         onClick={() => setExpanded(e => !e)}
         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-3 text-left">
-          <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xl">🍽️</div>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
+            isDisputed ? 'bg-red-100' : 'bg-orange-50'
+          }`}>
+            {isDisputed ? <AlertTriangle className="w-5 h-5 text-red-600" /> : '🍽️'}
+          </div>
           <div>
             <p className="font-semibold text-[#1A1A2E] text-sm">
               ₦{parseFloat(order.total_amount).toFixed(2)}
@@ -62,7 +68,11 @@ function ShipmentCard({ order, shipment, onRefresh }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {shipment ? (
+          {isDisputed ? (
+            <span className="badge bg-red-100 text-red-700 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Disputed
+            </span>
+          ) : shipment ? (
             <span className={`badge ${SHIPMENT_STATUS_COLOR[shipment.status]}`}>
               {shipment.status}
             </span>
@@ -84,8 +94,29 @@ function ShipmentCard({ order, shipment, onRefresh }) {
             <div className="bg-red-50 text-red-700 text-sm p-3 rounded-lg">{error}</div>
           )}
 
-          {!shipment ? (
-            // Shipment not yet auto-created — payment event may still be processing
+          {isDisputed ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="font-semibold text-red-800 text-sm mb-1">
+                Customer reports non-delivery
+              </p>
+              <p className="text-red-700 text-sm mb-3">
+                This customer said they did not receive their order.
+                Please contact the delivery rider to investigate before
+                taking further action.
+              </p>
+              {shipment?.driver_name && (
+                <p className="text-xs text-red-600">
+                  Driver: <strong>{shipment.driver_name}</strong>
+                  {shipment.driver_phone && ` · ${shipment.driver_phone}`}
+                </p>
+              )}
+              {shipment?.delivery_address && (
+                <p className="text-xs text-red-600 mt-1">
+                  Delivery address: {shipment.delivery_address}
+                </p>
+              )}
+            </div>
+          ) : !shipment ? (
             <div className="text-center py-4 text-gray-500 text-sm">
               <Clock className="w-5 h-5 mx-auto mb-2 text-amber-400" />
               Shipment is being created automatically.<br />
@@ -97,7 +128,6 @@ function ShipmentCard({ order, shipment, onRefresh }) {
             </div>
           ) : (
             <>
-              {/* Driver info — only relevant for dispatch */}
               {shipment.status === 'pending' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -197,6 +227,7 @@ export default function StaffDashboard() {
 
   const inTransit  = Object.values(shipments).filter(s => s?.status === 'dispatched').length
   const pending    = Object.values(shipments).filter(s => s?.status === 'pending').length
+  const disputed   = paidOrders.filter(o => o.status === 'disputed').length
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -214,7 +245,7 @@ export default function StaffDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-4 gap-3 mb-8">
         <div className="card px-4 py-3 text-center">
           <p className="text-2xl font-bold text-[#1A1A2E]">{paidOrders.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Active orders</p>
@@ -226,6 +257,10 @@ export default function StaffDashboard() {
         <div className="card px-4 py-3 text-center">
           <p className="text-2xl font-bold text-[#FF6B35]">{inTransit}</p>
           <p className="text-xs text-gray-500 mt-0.5">In transit</p>
+        </div>
+        <div className={`card px-4 py-3 text-center ${disputed > 0 ? 'border-red-300 bg-red-50' : ''}`}>
+          <p className={`text-2xl font-bold ${disputed > 0 ? 'text-red-600' : 'text-gray-300'}`}>{disputed}</p>
+          <p className={`text-xs mt-0.5 ${disputed > 0 ? 'text-red-500' : 'text-gray-500'}`}>Disputed</p>
         </div>
       </div>
 
@@ -240,14 +275,16 @@ export default function StaffDashboard() {
         </div>
       ) : (
         <div className="space-y-3">
-          {paidOrders.map(order => (
-            <ShipmentCard
-              key={order.id}
-              order={order}
-              shipment={shipments[order.id]}
-              onRefresh={loadData}
-            />
-          ))}
+          {[...paidOrders]
+            .sort((a, b) => (a.status === 'disputed' ? -1 : 1) - (b.status === 'disputed' ? -1 : 1))
+            .map(order => (
+              <ShipmentCard
+                key={order.id}
+                order={order}
+                shipment={shipments[order.id]}
+                onRefresh={loadData}
+              />
+            ))}
         </div>
       )}
     </div>

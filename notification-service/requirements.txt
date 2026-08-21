@@ -9,3 +9,4 @@ uuid6
 aio-pika
 httpx
 boto3
+resend

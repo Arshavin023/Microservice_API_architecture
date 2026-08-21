@@ -63,7 +63,7 @@ export default function Cart({ onCartUpdate }) {
   )
 
   const items = cart?.items ?? []
-  const total = items.reduce((sum, item) => sum + parseFloat(item.subtotal ?? 0), 0)
+  const total = items.reduce((sum, item) => sum + parseFloat(item.unit_price ?? 0) * (item.quantity ?? 1), 0)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -128,7 +128,7 @@ export default function Cart({ onCartUpdate }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-bold text-[#1A1A2E]">₦{parseFloat(item.subtotal ?? 0).toFixed(2)}</span>
+                  <span className="font-bold text-[#1A1A2E]">₦{(parseFloat(item.unit_price ?? 0) * (item.quantity ?? 1)).toFixed(2)}</span>
                   <button
                     onClick={() => removeItem(item.id)}
                     disabled={removing[item.id]}

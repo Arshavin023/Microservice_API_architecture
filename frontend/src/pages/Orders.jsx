@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { Loader2, Package, ChevronRight, CheckCircle, Clock, XCircle, Truck, MapPin, Radio } from 'lucide-react'
+import { io } from 'socket.io-client'
 import { ordersApi, paymentsApi, shippingApi } from '../api'
-import { Loader2, Package, ChevronRight, CheckCircle, Clock, XCircle, Truck, MapPin } from 'lucide-react'
 
 const STATUS_CONFIG = {
   draft:                  { label: 'Draft',                color: 'bg-gray-100 text-gray-600',        dot: 'bg-gray-400' },
@@ -10,6 +11,7 @@ const STATUS_CONFIG = {
   shipped:                { label: 'On the way',           color: 'bg-blue-100 text-blue-700',        dot: 'bg-blue-500' },
   awaiting_confirmation:  { label: 'Confirm delivery',     color: 'bg-purple-100 text-purple-700',    dot: 'bg-purple-500' },
   delivered:              { label: 'Delivered',            color: 'bg-emerald-100 text-emerald-700',  dot: 'bg-emerald-500' },
+  disputed:               { label: 'Disputed',             color: 'bg-red-100 text-red-700',          dot: 'bg-red-500' },
   cancelled:              { label: 'Cancelled',            color: 'bg-red-100 text-red-700',          dot: 'bg-red-400' },
 }
 
@@ -171,7 +173,10 @@ export function OrderDetail() {
   const [loading,     setLoading]     = useState(true)
   const [confirming,  setConfirming]  = useState(false)
   const [confirmed,   setConfirmed]   = useState(false)
+  const [liveStatus,  setLiveStatus]  = useState(null)  // real-time override
+  const socketRef = useRef(null)
 
+  // ── Initial data fetch ──────────────────────────────────────────
   useEffect(() => {
     Promise.allSettled([
       ordersApi.getOrder(id),
@@ -184,16 +189,59 @@ export function OrderDetail() {
     }).finally(() => setLoading(false))
   }, [id])
 
+  // ── Socket.io live updates ──────────────────────────────────────
+  useEffect(() => {
+    const socket = io('/', {
+      path: '/ws/socket.io',
+      transports: ['websocket', 'polling'],
+    })
+    socketRef.current = socket
+
+    socket.on('connect', () => {
+      socket.emit('subscribe:order', id)
+    })
+
+    socket.on('order:status', ({ status }) => {
+      setLiveStatus(status)
+      // Also update the order object so timeline re-renders
+      setOrder(prev => prev ? { ...prev, status } : prev)
+    })
+
+    return () => {
+      socket.emit('unsubscribe:order', id)
+      socket.disconnect()
+    }
+  }, [id])
+
+  const [disputing,   setDisputing]   = useState(false)
+  const [disputed,    setDisputed]    = useState(false)
+
   const handleConfirmDelivery = async () => {
     setConfirming(true)
     try {
-      const res = await ordersApi.confirmDelivery(id)
+      await ordersApi.confirmDelivery(id)
+      // Re-fetch full order so status badge + timeline update immediately
+      const res = await ordersApi.getOrder(id)
       setOrder(res.data)
       setConfirmed(true)
     } catch (err) {
       console.error('Confirm delivery failed:', err)
     } finally {
       setConfirming(false)
+    }
+  }
+
+  const handleDisputeDelivery = async () => {
+    setDisputing(true)
+    try {
+      await ordersApi.disputeDelivery(id)
+      const res = await ordersApi.getOrder(id)
+      setOrder(res.data)
+      setDisputed(true)
+    } catch (err) {
+      console.error('Dispute delivery failed:', err)
+    } finally {
+      setDisputing(false)
     }
   }
 
@@ -210,7 +258,7 @@ export function OrderDetail() {
     </div>
   )
 
-  const showTracking = ['paid', 'shipped', 'delivered'].includes(order.status)
+  const showTracking = ['paid', 'shipped', 'awaiting_confirmation', 'delivered'].includes(order.status)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -224,7 +272,14 @@ export function OrderDetail() {
           <h1 className="text-2xl font-bold text-[#1A1A2E]">Order details</h1>
           <p className="text-xs text-gray-400 font-mono mt-1">{order.id}</p>
         </div>
-        <StatusBadge status={order.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={order.status} />
+          {liveStatus && (
+            <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+              <Radio className="w-3 h-3 animate-pulse" /> Live
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tracking timeline for paid+ orders */}
@@ -233,21 +288,29 @@ export function OrderDetail() {
       )}
 
       {/* Awaiting confirmation CTA */}
-      {order.status === 'awaiting_confirmation' && !confirmed && (
+      {order.status === 'awaiting_confirmation' && !confirmed && !disputed && (
         <div className="card p-5 mb-6 border-purple-200 bg-purple-50">
           <p className="font-semibold text-purple-800 mb-1">📦 Did you receive your order?</p>
           <p className="text-sm text-purple-700 mb-4">
             Our rider has reported delivery. Please confirm you received your order.
             If you don't confirm within <strong>2 hours</strong>, it will be automatically confirmed.
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={handleConfirmDelivery}
-              disabled={confirming}
+              disabled={confirming || disputing}
               className="btn-primary text-sm flex items-center gap-2"
             >
               {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : '✓'}
               Yes, I received my order
+            </button>
+            <button
+              onClick={handleDisputeDelivery}
+              disabled={confirming || disputing}
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all disabled:opacity-50"
+            >
+              {disputing ? <Loader2 className="w-4 h-4 animate-spin" /> : '✗'}
+              No, I didn't receive it
             </button>
           </div>
         </div>
@@ -257,6 +320,16 @@ export function OrderDetail() {
         <div className="card p-5 mb-6 bg-emerald-50 border-emerald-200">
           <p className="font-semibold text-emerald-800">🎉 Thank you for confirming!</p>
           <p className="text-sm text-emerald-700 mt-1">Your order is now marked as delivered. Enjoy your meal!</p>
+        </div>
+      )}
+
+      {disputed && (
+        <div className="card p-5 mb-6 bg-red-50 border-red-200">
+          <p className="font-semibold text-red-800">⚠️ Dispute raised</p>
+          <p className="text-sm text-red-700 mt-1">
+            We're sorry to hear that. Our team has been notified and will investigate
+            with the delivery rider. We'll contact you shortly.
+          </p>
         </div>
       )}
 

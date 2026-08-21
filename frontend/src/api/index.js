@@ -49,6 +49,7 @@ export const ordersApi = {
   listOrders:       ()       => api.get('/orders/orders'),
   listAllOrders:    ()       => api.get('/orders/orders/all'),
   getOrder:         (id)     => api.get(`/orders/orders/${id}`),
+  disputeDelivery:  (id)     => api.patch(`/orders/orders/${id}/dispute-delivery`),
   confirmDelivery:  (id)     => api.patch(`/orders/orders/${id}/confirm-delivery`),
 }
 

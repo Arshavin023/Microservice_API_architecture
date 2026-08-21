@@ -16,3 +16,4 @@ pika
 pytest-asyncio>=0.23
 httpx
 aiosqlite
+resend

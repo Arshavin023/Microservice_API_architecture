@@ -154,6 +154,7 @@ async def get_all_orders(
                     OrderStatus.paid,
                     OrderStatus.shipped,
                     OrderStatus.awaiting_confirmation,
+                    OrderStatus.disputed,
                 ]
             )
         )
@@ -220,7 +221,6 @@ async def confirm_delivery(
     result = await db.execute(
         select(Order)
         .where(Order.id == uid, Order.user_id == user_id)
-        .options(selectinload(Order.items))
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -234,13 +234,49 @@ async def confirm_delivery(
 
     order.status = OrderStatus.delivered
     await db.commit()
-
+    await db.refresh(order)
     return OrderResponse(
         id=cast(UUID, order.id),
-        status=OrderStatusEnum(order.status.value), 
+        status=OrderStatusEnum(order.status.value),
         total_amount=cast(Decimal, order.total_amount),
-        items=order.items,
+        items=[],          # ← change order.items to []
         price_changes=[],
         created_at=order.created_at,
         updated_at=order.updated_at,
     )
+
+
+@router.patch("/orders/{order_id}/dispute-delivery", response_model=OrderResponse)
+async def dispute_delivery(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
+) -> OrderResponse:
+    """Customer reports they did not receive their order."""
+    uid = _parse_uuid(order_id, "order_id")
+    result = await db.execute(
+        select(Order)
+        .where(Order.id == uid, Order.user_id == user_id)
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status.value != "awaiting_confirmation":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Order cannot be disputed — current status is '{order.status.value}'"
+        )
+    order.status = OrderStatus.disputed
+    await db.commit()
+    await db.refresh(order)
+    return OrderResponse(
+        id=cast(UUID, order.id),
+        status=OrderStatusEnum(order.status.value),
+        total_amount=cast(Decimal, order.total_amount),
+        items=[], 
+        price_changes=[],
+        created_at=order.created_at,
+        updated_at=order.updated_at,
+    )
+
+    # return order
