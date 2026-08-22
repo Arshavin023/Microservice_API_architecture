@@ -73,6 +73,7 @@ jobs:
           RABBITMQ_URL: amqp://test_user:test_password@localhost:5672/
           JWT_SECRET: ci-test-secret-not-for-production
           SES_SENDER_EMAIL: no-reply@ci.example
+          RESEND_API_KEY: re_test_dummy_key_for_ci
           AWS_REGION: us-east-1
           # Dummy AWS creds so boto3 doesn't fail at import time
           AWS_ACCESS_KEY_ID: dummy
