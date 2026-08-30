@@ -821,3 +821,93 @@ Applying fixes...
 Some mismatches could not be fixed — see FAILED lines above. Manual investigation required.
 Exit code: 2
 
+── 2026-08-24T15:59:01Z ──────────────────────────────────────
+Reconciliation: found 1 mismatch(es) out of 22 terminal payments:
+
+  order_id=01a026bd-d47e-75b9-b060-900b3308aa22
+    payment_status=succeeded (ref: PIZZA-8D075F62FE024A85)
+    expected order status: paid
+    actual order status:   disputed
+
+Applying fixes...
+
+  FAILED: order 01a026bd-d47e-75b9-b060-900b3308aa22 -> paid (unreachable: [Errno 111] Connection refused)
+
+Some mismatches could not be fixed — see FAILED lines above. Manual investigation required.
+Exit code: 2
+
+── 2026-08-24T16:00:01Z ──────────────────────────────────────
+Reconciliation: found 1 mismatch(es) out of 22 terminal payments:
+
+  order_id=01a026bd-d47e-75b9-b060-900b3308aa22
+    payment_status=succeeded (ref: PIZZA-8D075F62FE024A85)
+    expected order status: paid
+    actual order status:   disputed
+
+Applying fixes...
+
+  FAILED: order 01a026bd-d47e-75b9-b060-900b3308aa22 -> paid (unreachable: [Errno 111] Connection refused)
+
+Some mismatches could not be fixed — see FAILED lines above. Manual investigation required.
+Exit code: 2
+
+── 2026-08-25T15:59:01Z ──────────────────────────────────────
+Reconciliation: found 1 mismatch(es) out of 23 terminal payments:
+
+  order_id=01a026bd-d47e-75b9-b060-900b3308aa22
+    payment_status=succeeded (ref: PIZZA-8D075F62FE024A85)
+    expected order status: paid
+    actual order status:   disputed
+
+Applying fixes...
+
+  FAILED: order 01a026bd-d47e-75b9-b060-900b3308aa22 -> paid (unreachable: [Errno 111] Connection refused)
+
+Some mismatches could not be fixed — see FAILED lines above. Manual investigation required.
+Exit code: 2
+
+── 2026-08-25T16:00:01Z ──────────────────────────────────────
+Reconciliation: found 1 mismatch(es) out of 23 terminal payments:
+
+  order_id=01a026bd-d47e-75b9-b060-900b3308aa22
+    payment_status=succeeded (ref: PIZZA-8D075F62FE024A85)
+    expected order status: paid
+    actual order status:   disputed
+
+Applying fixes...
+
+  FAILED: order 01a026bd-d47e-75b9-b060-900b3308aa22 -> paid (unreachable: [Errno 111] Connection refused)
+
+Some mismatches could not be fixed — see FAILED lines above. Manual investigation required.
+Exit code: 2
+
+── 2026-08-30T16:59:01Z ──────────────────────────────────────
+Reconciliation: found 1 mismatch(es) out of 23 terminal payments:
+
+  order_id=01a026bd-d47e-75b9-b060-900b3308aa22
+    payment_status=succeeded (ref: PIZZA-8D075F62FE024A85)
+    expected order status: paid
+    actual order status:   disputed
+
+Applying fixes...
+
+  FAILED: order 01a026bd-d47e-75b9-b060-900b3308aa22 -> paid (unreachable: [Errno 111] Connection refused)
+
+Some mismatches could not be fixed — see FAILED lines above. Manual investigation required.
+Exit code: 2
+
+── 2026-08-30T17:00:01Z ──────────────────────────────────────
+Reconciliation: found 1 mismatch(es) out of 23 terminal payments:
+
+  order_id=01a026bd-d47e-75b9-b060-900b3308aa22
+    payment_status=succeeded (ref: PIZZA-8D075F62FE024A85)
+    expected order status: paid
+    actual order status:   disputed
+
+Applying fixes...
+
+  FAILED: order 01a026bd-d47e-75b9-b060-900b3308aa22 -> paid (unreachable: [Errno 111] Connection refused)
+
+Some mismatches could not be fixed — see FAILED lines above. Manual investigation required.
+Exit code: 2
+

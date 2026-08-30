@@ -1,14 +1,16 @@
-# Pizzasale API
+# Chop Now
 
-A microservices-based ecommerce platform for a pizza restaurant, built with **FastAPI**, **PostgreSQL**, **RabbitMQ**, and a **React** frontend.
+![Chop Now Architecture Diagram](./images/architecture.jpeg)
 
-Users can register, verify their email, and authenticate securely. A new registration triggers an asynchronous, event-driven workflow that creates a user profile in a separate service. Profiles can be read and updated through a JWT-protected API. A separate catalog service exposes a public, browsable menu — categories and products with size-based pricing — while keeping all writes restricted to staff accounts. Users can add items to a persistent cart, check out with real-time price verification, and pay through Paystack's hosted checkout page — with webhook-driven order status updates flowing back through the system automatically. Once paid, staff dispatch and deliver orders through a dedicated shipping service, with the order state machine advancing automatically via RabbitMQ events, and customers receiving email notifications at every stage via AWS SES. The entire flow is accessible through a React single-page application served by nginx, which proxies API calls to the appropriate backend service so the frontend never knows the system is split across eight separate services. No service touches another's database, and no service calls another's API except where synchronous communication is the correct architectural choice.
+A microservices-based food delivery platform for Nigerian cuisine, built with **FastAPI**, **PostgreSQL**, **RabbitMQ**, **Socket.io**, and a **React** frontend. Deployed live at [chopnownow.com](https://chopnownow.com).
+
+Users can register, verify their email, and authenticate securely. A new registration triggers an asynchronous, event-driven workflow that creates a user profile in a separate service. Profiles can be read and updated through a JWT-protected API. A separate catalog service exposes a public, browsable menu — categories and products with size-based pricing and real food photos — while keeping all writes restricted to staff accounts. Users can add items to a persistent cart, check out with real-time price verification, and pay through Paystack's hosted checkout page — with webhook-driven order status updates flowing back through the system automatically. Once paid, a shipment is auto-created; staff dispatch it and notify the customer on delivery, who then confirms receipt or disputes it — with a 2-hour auto-confirmation cron as a safety net if the customer never responds. The order state machine advances automatically via RabbitMQ events at every step, customers receive transactional emails via Resend at each stage, and a dedicated real-time service pushes live order-status updates to the browser over WebSockets — no polling, no manual refresh. The entire flow is accessible through a React single-page application served by nginx, which proxies API calls to the appropriate backend service so the frontend never knows the system is split across nine separate services. No service touches another's database, and no service calls another's API except where synchronous communication is the correct architectural choice.
 
 ---
 
 ## Architecture
 
-This project follows eight complementary patterns:
+This project follows eleven complementary patterns:
 
 **1. Database-per-service** — each microservice owns its own PostgreSQL database and is the only service allowed to read/write it directly.
 
@@ -16,7 +18,7 @@ This project follows eight complementary patterns:
 
 **3. Shared-secret JWT verification across services** — `auth-service` issues JWTs; `user-service`, `product-service`, `order-service`, and `shipping-service` independently verify them using the same signing secret, without ever calling back into `auth-service`. Each service trusts the token's signature, not a network round-trip.
 
-**4. Public reads, claim-gated writes** — `product-service`'s menu is openly browsable by anyone, but creating, updating, or deleting catalog data requires a JWT carrying `is_staff: true`. The same pattern applies to `shipping-service` — customers can track their own shipment, but only staff can create or advance one. Authentication (who you are) and authorization (what you're allowed to do) are enforced as two distinct, separately-tested checks.
+**4. Public reads, claim-gated writes** — `product-service`'s menu is openly browsable by anyone, but creating, updating, or deleting catalog data requires a JWT carrying `is_staff: true`. The same pattern applies to `shipping-service` — customers can track their own shipment, but only staff can dispatch or notify. Authentication (who you are) and authorization (what you're allowed to do) are enforced as two distinct, separately-tested checks.
 
 **5. Synchronous service-to-service calls where correctness requires it** — checkout verifies live prices against `product-service` and initializes payment via `payment-service` synchronously. This is a deliberate exception to the event-driven default: a user sitting at the checkout screen needs an immediate answer, and a failed payment must fail the whole checkout atomically rather than leaving an order in an ambiguous state.
 
@@ -24,86 +26,17 @@ This project follows eight complementary patterns:
 
 **7. Saga pattern with reconciliation, not distributed transactions** — a payment confirmation and its corresponding order status update live in two separate databases, so true atomicity across both is not achievable (and 2PC was deliberately rejected as the wrong tool for this scale). Instead: `payment-service` writes its own state first (the durable source of truth for "was this charged"), then synchronously calls `order-service` with retry-with-backoff. If that exhausts all retries, a standalone reconciliation script (`scripts/reconcile_payments.py`) detects and repairs the gap on a cron schedule. This was deliberately tested against a real induced mismatch, not just designed and assumed correct.
 
-**8. Nginx as a unified frontend gateway** — the React SPA makes all API calls to `/api/*` on the same origin (port 3000). nginx routes each prefix to the correct backend service internally. The frontend has no knowledge of the microservice split; from its perspective, it's talking to one API.
+**8. Nginx as a unified frontend gateway** — the React SPA makes all API calls to `/api/*` on the same origin (port 3000 locally, 443 in production). nginx routes each prefix to the correct backend service internally, and also proxies `/ws/*` to `realtime-service` for WebSocket upgrades. The frontend has no knowledge of the microservice split; from its perspective, it's talking to one API and one socket.
 
-**9. Pure-consumer workers for decoupled side effects** — `user-service-worker`, `order-service-worker`, and `notification-service` have no HTTP endpoints of their own. They exist solely to consume events and act on them: creating profiles, advancing order state, and sending emails respectively. This means adding a new consumer (e.g. analytics, SMS) requires zero changes to any publishing service.
+**9. Pure-consumer workers for decoupled side effects** — `user-service-worker`, `order-service-worker`, `shipping-service-worker`, `notification-service`, and `realtime-service` have no customer-facing HTTP endpoints of their own (`realtime-service` exposes only a WebSocket and a health check). They exist solely to consume events and act on them: creating profiles, advancing order state, auto-creating shipments, sending emails, and pushing live UI updates respectively. This means adding a new consumer (e.g. SMS, analytics) requires zero changes to any publishing service.
 
-```text
-                    ┌──────────────────────────────────┐
-                    │   frontend (React + nginx)       │
-                    │   port 3000                      │
-                    │   /api/auth/*     → auth-service │
-                    │   /api/users/*    → user-service │
-                    │   /api/products/* → product-svc  │
-                    │   /api/orders/*   → order-service│
-                    │   /api/payments/* → payment-svc  │
-                    └──────────────┬───────────────────┘
-                                   │ same-origin proxy (no CORS)
-                                   ▼
-┌──────────────┐   ┌──────────────┐   ┌────────────────────┐   ┌───────────────────┐   ┌──────────────────────┐
-│ auth-service │   │ user-service │   │ product-service    │   │  order-service    │   │  payment-service     │
-│  (port 8001) │   │  (port 8002) │   │  (port 8003)       │   │  (port 8004)      │   │  (port 8005)         │
-│              │   │              │   │                    │   │                   │   │  ← Paystack webhook  │
-│ on register: │   │ GET/PATCH    │   │ GET: public        │   │ cart, checkout    │   │  HMAC-SHA512 verify  │
-│ publishes    │   │ /users/{id}  │   │ POST/PATCH/DELETE: │   │ sync→product-svc  │   │  re-verify Paystack  │
-│ user.regist- │   │ (JWT,        │   │ staff only         │   │ sync→payment-svc  │   │  retry-with-backoff  │
-│ ered event   │   │ self-only)   │   │                    │   │                   │   │  background task ack │
-└──────┬───────┘   └──────┬───────┘   └──────────┬─────────┘   └────────┬──────────┘   └──────────┬───────────┘
-       │                  │                       │                      │                          │
-       ▼                  ▼                       ▼                      ▼                          ▼
-┌──────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
-│auth_service  │  │ user_service_db  │  │ product_service  │  │ order_service_db │  │ payment_service_db   │
-│    _db       │  │                  │  │     _db          │  │                  │  │                      │
-└──────────────┘  └──────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────────────┘
+**10. Human-in-the-loop delivery confirmation, not a blind "mark delivered" button** — a rider reporting delivery and a customer actually receiving the order are two different facts, and conflating them invites disputes nobody can resolve later. Staff dispatch a shipment, then separately notify the customer once the rider reports delivery — this moves the order to `awaiting_confirmation` rather than straight to `delivered`. The customer then explicitly confirms receipt or disputes it. If they do neither, a cron job (`scripts/auto_confirm_delivery.py`) auto-confirms after 2 hours so orders don't hang indefinitely. A disputed order is surfaced distinctly on the staff dashboard for investigation rather than silently closed out.
 
-       │ publishes user.registered               │ publishes order.placed    │ publishes payment.succeeded
-       │                                         │                           │ publishes payment.failed
-       ▼                                         ▼                           │
-┌────────────────────────────────────────────────────────────────────────────┼──────────────────────────────┐
-│                               RabbitMQ                                     │                              │
-│   exchanges: user_events · order_events · payment_events · shipping_events │                              │
-└────┬───────────────────────────────────────────────────────────────────────┘                              │
-     │                                                                                                       │
-     │ user.registered                          shipment.dispatched                                         │
-     ▼                                          shipment.delivered                                          │
-┌─────────────────────┐   ┌──────────────────────────────────────┐   ┌──────────────────────────────────────┘
-│ user-service-worker │   │   order-service-worker               │   │   shipping-service (port 8006)
-│ (aio-pika consumer) │   │   (aio-pika consumer)                │   │   auto-created on payment.succeeded
-│ creates UserProfile │   │   shipment.dispatched                │   │   staff: PATCH /{id}/dispatch
-│ idempotently        │   │     → order: paid → shipped          │   │         PATCH /{id}/notify-customer
-└──────────┬──────────┘   │   shipment.delivery_pending          │   │   customer: GET /order/{id}
-           │              │     → order: shipped →               │   │            PATCH /orders/{id}/confirm-delivery
-           ▼              │         awaiting_confirmation        │   │   publishes shipment.dispatched
-┌──────────────────┐      │   shipment.delivered                 │   │            shipment.delivery_pending
-│ user_service_db  │      │     → order: delivered               │   │            shipment.delivered
-│ (profile row)    │      └──────────────────────────────────────┘   └──────────────┬───────────────
-└──────────────────┘                                                                 │
-                                                                                     ▼
-                                                                   ┌──────────────────────┐
-                                                                   │  shipping_service_db │
-                                                                   └──────────────────────┘
+**11. Real-time UI updates via a dedicated pub/sub bridge, not polling** — `realtime-service` is a lightweight Node/Socket.io process that subscribes to the same RabbitMQ exchanges as the other consumers, but instead of writing to a database it forwards each event straight to any connected browser subscribed to that order's room. The frontend's order-tracking page opens one WebSocket connection and receives live status pushes the instant an event fires — no interval polling, no stale data, and no coupling between the WebSocket layer and any service's database.
 
-     │ payment.succeeded · payment.failed
-     │ shipment.dispatched · shipment.delivery_pending · shipment.delivered
-     ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│   notification-service (pure consumer, no HTTP port)                  │
-│   fetches recipient email via user-service GET /users/internal/{id}   │
-│   payment.succeeded   → "✅ Payment confirmed — order being prepared" │
-│   payment.failed      → "❌ Payment failed"                           │
-│   shipment.dispatched → "🛵 Your order is on the way!"               │
-│   delivery_pending    → "📦 Did you receive your order?"             │
-│   idempotency guard — checks notification_service_db before sending   │
-└──────────────────────────────────┬───────────────────────────────────┘
-                                   │
-                                   ▼
-                    ┌──────────────────────────┐
-                    │  notification_service_db  │
-                    │  (audit log of all sends) │
-                    └──────────────────────────┘
-
-All 7 databases run on a single host-managed PostgreSQL instance
-(outside Docker Compose — containers connect via host.docker.internal)
+All 7 Postgres databases run on a single host-managed PostgreSQL instance
+(outside Docker Compose — containers connect via host.docker.internal locally,
+or localhost directly on the production server where Postgres runs alongside Docker).
 ```
 
 **Why event-driven instead of a direct API call?** A direct call (`auth-service` → `POST user-service/users`) would couple the two services' uptime together — if `user-service` is down or slow, registration breaks too, even though registration itself succeeded. Publishing an event instead means `auth-service` doesn't wait on anyone; `user-service` consumes the event whenever it's able to, and the same event can later be consumed by other services (e.g. a future `notification-service`) without ever touching `auth-service`'s code.
@@ -126,7 +59,13 @@ All 7 databases run on a single host-managed PostgreSQL instance
 
 **Why isn't payment confirmation and order status update a single atomic transaction?** They live in two separate PostgreSQL databases by design (database-per-service), and there is no way to span a single ACID transaction across both. Two-phase commit could theoretically provide that atomicity, but it's fragile in practice — it blocks on coordinator failure and is rarely the right tradeoff for this scale, which is why almost no production microservice system actually uses it. The system instead implements the saga pattern: `payment-service` commits its own state first (the source of truth for "was this actually charged"), then propagates that fact to `order-service` synchronously with retry-with-backoff. If propagation exhausts all retries — `order-service` was down for the entire retry window — a standalone reconciliation script closes the gap. The honest claim here is not "this can never be inconsistent," it's "any inconsistency is always eventually detected and corrected, and the detection mechanism has been tested against a real induced failure, not just assumed to work."
 
-**Why serve the frontend through nginx rather than a development server?** A dev server like Vite's built-in one serves React directly at `localhost:5173` while the backend APIs live at `localhost:8001–8005` — different origins, so every request triggers CORS preflight. nginx as a reverse proxy solves this cleanly: all traffic enters through `localhost:3000`, and the proxy routes `/api/*` to the right backend service based on path prefix. The frontend makes same-origin requests and knows nothing about the microservice topology behind nginx. This also mirrors exactly how a real deployment would be structured — nginx in front of multiple upstream services — so the local dev setup isn't a simplification of production, it is production-shaped.
+**Why serve the frontend through nginx rather than a development server?** A dev server like Vite's built-in one serves React directly at `localhost:5173` while the backend APIs live at `localhost:8001–8006` — different origins, so every request triggers CORS preflight. nginx as a reverse proxy solves this cleanly: all traffic enters through `localhost:3000` (or `https://chopnownow.com` in production), and the proxy routes `/api/*` to the right backend service and `/ws/*` to the WebSocket service, based on path prefix. The frontend makes same-origin requests and knows nothing about the microservice topology behind nginx. This also mirrors exactly how a real deployment would be structured — nginx (or, in production here, Caddy handling automatic HTTPS) in front of multiple upstream services — so the local dev setup isn't a simplification of production, it is production-shaped.
+
+**Why does "notify customer" set the shipment to `delivered` but the order to `awaiting_confirmation`, not both to `delivered`?** These are two different systems tracking two different facts. The shipment's job is to record what the *rider* did — they physically handed over the food, so `shipments.status = delivered` is true the moment staff record that. The order's job is to record what the *customer* experienced — and a rider's report of delivery is not proof the customer actually received the right order, or received it at all. Collapsing both into one `delivered` state would mean disputes have no state to exist in: the order would already claim to be delivered before the customer had any chance to disagree. Keeping the order at `awaiting_confirmation` until the customer explicitly confirms (or disputes) means the system's own data reflects the real level of certainty at each point in time, not an optimistic assumption.
+
+**Why does the customer eventually get auto-confirmed after 2 hours instead of the order hanging forever?** Most customers who received their food correctly will simply never click "confirm" — not because anything is wrong, but because there's no reason for a satisfied customer to open the app again. If `awaiting_confirmation` had no expiry, the large majority of successful orders would sit in an unresolved state indefinitely, making that status useless as a signal of anything. The 2-hour cron (`scripts/auto_confirm_delivery.py`) auto-confirms silent orders, while a customer who genuinely didn't receive their order still has that full window to click "dispute" instead — the auto-confirm is a default for silence, not a way to suppress a real complaint.
+
+**Why is `realtime-service` a separate Node process instead of adding WebSocket support to an existing FastAPI service?** None of the existing services own "the current state of an order across its whole lifecycle" — that state is scattered across `order-service`, `shipping-service`, and the events between them. Bolting a WebSocket endpoint onto any one of those services would mean that service now also owns broadcasting events it didn't originate, coupling an unrelated concern to its actual responsibility. A dedicated consumer that only listens to the shared RabbitMQ exchanges and forwards events to subscribed browser clients keeps that responsibility isolated, and means the WebSocket layer can be scaled, restarted, or replaced independently of every other service — it holds no state in a database at all, so there is nothing to migrate or reconcile if it goes down and restarts.
 
 ---
 
@@ -134,17 +73,18 @@ All 7 databases run on a single host-managed PostgreSQL instance
 
 | Service | Status | Port | Responsibility |
 |---|---|---|---|
-| `auth-service` | **Done** | `8001` | Registration, strict password validation, email verification (AWS SES), login, JWT issue/refresh, publishes `user.registered` |
+| `auth-service` | **Done** | `8001` | Registration, strict password validation, email verification (Resend), login, JWT issue/refresh, forgot/reset password, publishes `user.registered` |
 | `user-service` | **Done** | `8002` | JWT-protected `GET`/`PATCH /users/{user_id}`, self-only authorization; internal endpoint for service-to-service email lookup |
 | `user-service-worker` | **Done** | — | Consumes `user.registered` events, creates profile rows idempotently |
-| `product-service` | **Done** | `8003` | Public menu browsing (categories, products, size-based pricing); staff-only create/update/delete |
-| `order-service` | **Done** | `8004` | Persistent cart, checkout with live price verification, order lifecycle state machine (`pending_payment → paid → shipped → awaiting_confirmation → delivered`), staff endpoint for all orders |
+| `product-service` | **Done** | `8003` | Public menu browsing (categories, products, size-based pricing, food photos); staff-only create/update/delete |
+| `order-service` | **Done** | `8004` | Persistent cart, checkout with live price verification, order lifecycle state machine (`pending_payment → paid → shipped → awaiting_confirmation → delivered` / `disputed`), staff endpoint for all orders, customer confirm/dispute endpoints |
 | `order-service-worker` | **Done** | — | Consumes `shipment.dispatched`, `shipment.delivery_pending`, `shipment.delivered` events, drives order state machine forward |
 | `payment-service` | **Done** | `8005` | Paystack initialize+verify flow, HMAC-SHA512 webhook verification, payment audit trail, retry-with-backoff, publishes `payment.succeeded`/`payment.failed` |
-| `shipping-service` | **Done** | `8006` | Staff-only shipment dispatch/notify-customer; customer shipment tracking and delivery confirmation; auto-created on `payment.succeeded`; publishes `shipment.dispatched`, `shipment.delivery_pending`, `shipment.delivered` |
+| `shipping-service` | **Done** | `8006` | Staff-only shipment dispatch/notify-customer; customer shipment tracking; auto-created on `payment.succeeded`; publishes `shipment.dispatched`, `shipment.delivery_pending`, `shipment.delivered` |
 | `shipping-service-worker` | **Done** | — | Consumes `payment.succeeded`, auto-creates pending shipment for every paid order |
-| `notification-service` | **Done** | — | Consumes payment + shipping events, sends transactional emails via AWS SES (payment confirmed, payment failed, on the way, delivery confirmation request, delivered); idempotency guard prevents duplicate sends |
-| `frontend` | **Done** | `3000` | React SPA (Vite + Tailwind) served by nginx; proxies `/api/*` to backend services — no CORS, no hardcoded service URLs; pages: Menu, Cart, Orders, OrderDetail (tracking timeline + confirm delivery), Staff Dashboard, ForgotPassword, ResetPassword |
+| `notification-service` | **Done** | — | Consumes payment + shipping events, sends transactional emails via Resend (payment confirmed, payment failed, on the way, delivery confirmation request, delivered); idempotency guard prevents duplicate sends |
+| `realtime-service` | **Done** | `8007` | Node + Socket.io; subscribes to all 4 RabbitMQ exchanges, pushes live order-status updates to subscribed browser clients over WebSocket; no database, pure pub/sub bridge |
+| `frontend` | **Done** | `3000` | React SPA (Vite + Tailwind) served by nginx; proxies `/api/*` to backend services and `/ws/*` to `realtime-service` — no CORS, no hardcoded service URLs; pages: Menu, Cart, Orders, OrderDetail (live tracking timeline, confirm/dispute delivery), Staff Dashboard (incl. disputed orders), ForgotPassword, ResetPassword |
 
 ---
 
@@ -153,15 +93,18 @@ All 7 databases run on a single host-managed PostgreSQL instance
 - **Framework:** FastAPI (async)
 - **Database:** PostgreSQL, accessed via SQLAlchemy (async, `asyncpg` driver)
 - **Migrations:** Alembic — run as an explicit, decoupled step, not automatically on container boot (see below)
-- **Message broker:** RabbitMQ (topic exchange, durable queues); `aio-pika` for fully async consumers (`order-service-worker`, `notification-service`) to avoid event loop conflicts with asyncpg
+- **Message broker:** RabbitMQ (topic exchange, durable queues); `aio-pika` for fully async consumers (`order-service-worker`, `shipping-service-worker`, `notification-service`) to avoid event loop conflicts with asyncpg
+- **Real-time:** Socket.io (Node.js) — `realtime-service` bridges RabbitMQ events to browser WebSocket clients for live order tracking, no polling
 - **Auth:** JWT (access + refresh tokens) via `fastapi_jwt_auth2`, verified independently in every service that needs it, via a shared secret
-- **Email:** AWS SES (`boto3`) — used for both auth verification emails and transactional order/shipping notifications
+- **Email:** Resend — used for both auth verification/password-reset emails and transactional order/shipping notifications; sending domain (`chopnownow.com`) verified via DKIM/SPF/DMARC records
 - **Payments:** Paystack (initialize + verify flow, HMAC-SHA512 webhook signature verification, NGN test mode, background-task webhook processing, retry-with-backoff for cross-service status propagation, cron-scheduled reconciliation as a saga-pattern backstop)
 - **Password hashing:** Werkzeug security helpers
 - **Containerization:** Docker + Docker Compose, BuildKit cache mounts for fast rebuilds
-- **Webhook tunneling (dev):** ngrok — exposes `payment-service` webhook endpoint to Paystack during local development
-- **Frontend:** React 18 (Vite), Tailwind CSS, React Router v6, axios
-- **Frontend serving:** nginx (multi-stage Docker build — Node builds the bundle, nginx serves the static files and proxies `/api/*` to backend services)
+- **Webhook tunneling (dev only):** ngrok — exposes `payment-service`'s webhook endpoint to Paystack during local development; not used in production, where Paystack reaches the public domain directly
+- **Frontend:** React 18 (Vite), Tailwind CSS, React Router v6, axios, socket.io-client
+- **Frontend serving:** nginx (multi-stage Docker build — Node builds the bundle, nginx serves the static files and proxies `/api/*` and `/ws/*` to backend services)
+- **Production reverse proxy & TLS:** Caddy — terminates HTTPS for `chopnownow.com` with automatic Let's Encrypt certificate provisioning and renewal, forwards to the frontend container
+- **CI/CD:** GitHub Actions — test suite gates every push to `main`; on success, builds and pushes images for all 9 services to GHCR, then deploys over SSH (pulls images, writes `.env` from repository secrets, restarts containers, runs migrations on-server via `docker compose exec`, runs health checks, registers cron jobs)
 
 ---
 
@@ -192,7 +135,7 @@ Restart PostgreSQL after changing either file.
 
 ### 2. Environment variables
 
-Copy `.env.example` to `.env` (not committed) and fill in real values — Postgres credentials, RabbitMQ credentials, JWT secret, AWS SES credentials and verified sender email, and Paystack test API keys. `JWT_SECRET` must be identical across every service — it's how each one verifies tokens it never issued.
+Copy `.env.example` to `.env` (not committed) and fill in real values — Postgres credentials, RabbitMQ credentials, JWT secret, Resend API key and verified sender email, and Paystack test API keys. `JWT_SECRET` must be identical across every service — it's how each one verifies tokens it never issued.
 
 For local webhook testing, expose `payment-service` via ngrok:
 
@@ -208,11 +151,11 @@ Register the resulting `https://` URL as the webhook URL in your Paystack dashbo
 docker compose up -d --build
 ```
 
-This starts: RabbitMQ, `auth-service`, `user-service` (API + worker), `product-service`, `order-service`, `order-service-worker`, `payment-service`, `shipping-service`, `notification-service`, and `frontend`.
+This starts: RabbitMQ, `auth-service`, `user-service` (API + worker), `product-service`, `order-service` (API + worker), `payment-service`, `shipping-service` (API + worker), `notification-service`, `realtime-service`, and `frontend`.
 
 ### 4. Run migrations (explicit step, not automatic)
 
-Migrations are intentionally **not** run on container boot — that pattern breaks down with multiple replicas, since they'd all race to migrate simultaneously on deploy. Run them explicitly, once:
+Migrations are intentionally **not** run on container boot — that pattern breaks down with multiple replicas, since they'd all race to migrate simultaneously on deploy. Run them explicitly, once (`realtime-service` has no database and needs no migration):
 
 ```bash
 docker compose exec auth-service         alembic upgrade head
@@ -241,9 +184,10 @@ curl http://localhost:8003/docs
 curl http://localhost:8004/docs
 curl http://localhost:8005/docs
 curl http://localhost:8006/docs
+curl http://localhost:8007/health   # realtime-service — no Swagger docs, just a health check
 ```
 
-Register a user (must be a real, SES-verified address while SES is in sandbox mode), verify via the emailed link, then log in:
+Register a user (any real address — Resend has no sandbox restriction once the sending domain is verified), verify via the emailed link, then log in:
 
 ```bash
 curl -X POST http://localhost:8001/auth/register \
@@ -295,7 +239,7 @@ cd ..
 docker compose up -d --build frontend
 ```
 
-Open `http://localhost:3000` — the full user journey is available: register, verify email, log in, browse the menu, add to cart, check out, pay via Paystack, view order history with live status.
+Open `http://localhost:3000` — the full user journey is available: register, verify email, log in, browse the menu, add to cart, check out, pay via Paystack, then watch the order detail page update live (no refresh needed) as staff dispatch and notify — through to confirming or disputing delivery.
 
 ### 7. Reconciliation script (runs on the host, not in Docker)
 
@@ -326,6 +270,23 @@ Schedule via cron (`crontab -e`):
 ```
 
 See `scripts/README.md` for full details.
+
+### 8. Production deployment
+
+The app runs live at [chopnownow.com](https://chopnownow.com). Deployment is fully automated via GitHub Actions (`.github/workflows/deploy.yml`) on every push to `main`:
+
+1. **Test gate** — the full suite (`.github/workflows/test.yml`, 367+ tests across 6 services) must pass before anything else runs.
+2. **Build & push** — Docker images for all 9 services + frontend are built and pushed to GitHub Container Registry (GHCR).
+3. **Deploy over SSH** — the workflow connects to the production server, writes `.env` from repository secrets, pulls the freshly-built images, and restarts containers via `docker compose up -d`.
+4. **Migrations run on-server, not from GitHub's runners** — the production PostgreSQL instance is intentionally not exposed to the public internet, so `alembic upgrade head` is executed via `docker compose exec <service> alembic upgrade head` over the same SSH session, against the already-running containers, immediately after they restart with the new image.
+5. **Health checks** — every service's `/health` endpoint is polled before the deploy is considered successful.
+6. **Cron registration** — the reconciliation and auto-confirm cron jobs are re-registered idempotently on every deploy.
+
+**Infrastructure specifics:**
+- **Reverse proxy & TLS:** Caddy runs on the host (outside Docker), terminating HTTPS for `chopnownow.com` with automatically-renewing Let's Encrypt certificates, and reverse-proxying to the `frontend` container on port 3000.
+- **DNS:** `chopnownow.com` and `www` A-records point to the server's public IP (Namecheap); separate MX/TXT records (DKIM, SPF, DMARC) authorize Resend to send email as `noreply@chopnownow.com`.
+- **Database:** PostgreSQL runs directly on the production host (same pattern as local dev), not in a container — this is why migrations must run server-side rather than from GitHub's cloud runners.
+- **A single-service targeted redeploy** is supported via `workflow_dispatch` — useful for shipping a hotfix to one service without rebuilding and restarting all nine.
 
 ---
 
@@ -373,7 +334,8 @@ See `scripts/README.md` for full details.
 ├── order-service/
 │   ├── alembic/
 │   ├── app/
-│   │   ├── api/                # Cart, checkout, order history, internal status update endpoint
+│   │   ├── api/                # Cart, checkout, order history, confirm/dispute-delivery,
+│   │   │                       #   staff all-orders view, internal status update endpoint
 │   │   ├── core/               # JWT verification, user_id extraction
 │   │   ├── db/
 │   │   ├── models/             # Cart, CartItem, Order, OrderItem; OrderStatus state machine
@@ -398,33 +360,45 @@ See `scripts/README.md` for full details.
 ├── shipping-service/
 │   ├── alembic/
 │   ├── app/
-│   │   ├── api/                # POST /shipments, PATCH /{id}/dispatch, PATCH /{id}/deliver,
-│   │   │                       #   GET /order/{order_id} (customer track), GET /{id} (staff)
+│   │   ├── api/                # POST /shipments (auto), PATCH /{id}/dispatch,
+│   │   │                       #   PATCH /{id}/notify-customer, GET /order/{order_id} (customer),
+│   │   │                       #   GET /order/{order_id}/staff, GET /{id} (staff)
 │   │   ├── core/               # JWT verification, require_staff dependency
 │   │   ├── db/
 │   │   ├── models/             # Shipment (pending → dispatched → delivered state machine)
 │   │   ├── schemas/            # Create/dispatch/deliver/response shapes
 │   │   ├── services/           # ShipmentService — state transitions with event publishing
-│   │   └── utils/              # events (publish shipment.dispatched / shipment.delivered)
+│   │   └── utils/              # events (publish shipment.dispatched / delivery_pending / delivered)
 │   ├── Dockerfile
 │   └── start.sh
+├── shipping-service-worker/    # (same image as shipping-service, different CMD)
+│   └── app/workers/consumer.py # consumes payment.succeeded → auto-creates pending shipment
 ├── notification-service/
 │   ├── alembic/
 │   ├── app/
 │   │   ├── db/                 # session.py for notification audit log writes
 │   │   ├── models/             # Notification — audit log of every email sent/attempted
-│   │   ├── utils/              # ses.py (AWS SES sender), templates.py (HTML + text email bodies)
+│   │   ├── utils/              # resend_client.py (Resend sender), templates.py (HTML + text email bodies)
 │   │   └── workers/            # consumer.py — aio-pika async consumer for payment + shipping events
 │   └── Dockerfile              # No HTTP server — pure worker, CMD runs consumer directly
+├── realtime-service/
+│   ├── index.js                 # Express health check + Socket.io server + amqplib RabbitMQ consumer;
+│   │                             #   subscribes to all 4 exchanges, forwards each event to the
+│   │                             #   Socket.io room matching that order's id — no database, no HTTP API
+│   ├── package.json
+│   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── api/                # axios client — all requests to /api/* (nginx proxy)
+│   │   ├── api/                # axios client — all requests to /api/* (nginx proxy);
+│   │   │                       #   socket.io-client connects to /ws/* for live order updates
 │   │   ├── components/         # Navbar, ProtectedRoute
 │   │   ├── context/            # AuthContext — JWT storage, login/logout, user state
 │   │   └── pages/              # Menu, Login, Register, ForgotPassword, ResetPassword,
-│   │                           #   Cart, Orders, OrderDetail (tracking timeline + confirm delivery),
-│   │                           #   Profile, StaffDashboard
-│   ├── nginx.conf              # Serves React SPA; proxies /api/* to backend services
+│   │                           #   Cart, Orders, OrderDetail (live tracking timeline via
+│   │                           #   WebSocket, confirm/dispute delivery buttons),
+│   │                           #   Profile, StaffDashboard (incl. disputed orders)
+│   ├── nginx.conf              # Serves React SPA; proxies /api/* to backend services,
+│   │                           #   /ws/* to realtime-service (WebSocket upgrade headers)
 │   └── Dockerfile              # Multi-stage: node:18-alpine builds, nginx:alpine serves
 ├── scripts/
 │   ├── reconcile_payments.py     # saga backstop — detects/fixes payment↔order mismatches
@@ -434,6 +408,11 @@ See `scripts/README.md` for full details.
 │   ├── requirements.txt          # httpx, psycopg2-binary (runs on host, not in Docker)
 │   ├── logs/                     # not committed — script run history
 │   └── README.md                 # setup, manual usage, crontab entries
+├── .github/
+│   └── workflows/
+│       ├── test.yml            # runs on every push — 6 parallel service test jobs
+│       └── deploy.yml          # runs on push to main — test gate → build/push images →
+│                                #   SSH deploy → on-server migrations → health checks
 ├── docker-compose.yml
 └── .env                        # not committed
 ```
@@ -443,49 +422,51 @@ See `scripts/README.md` for full details.
 ## Roadmap
 
 - [x] `auth-service`: registration, strict password validation, login, JWT issue/refresh
-- [x] `auth-service`: real email verification via AWS SES, login gated on verification
-- [x] `auth-service`: forgot password / reset password flow via `URLSafeTimedSerializer` tokens (1hr window), AWS SES reset emails
+- [x] `auth-service`: real email verification via Resend, login gated on verification
+- [x] `auth-service`: forgot password / reset password flow via `URLSafeTimedSerializer` tokens (1hr window), Resend reset emails
 - [x] Event-driven communication: `auth-service` publishes, `user-service-worker` consumes
 - [x] Idempotent, at-least-once event consumption (proven under real failure conditions, not just designed for it)
 - [x] `user-service`: JWT-protected profile read/update endpoints, self-only authorization (proven against both an unrelated user and a self/target mismatch)
 - [x] `user-service`: internal endpoint (`GET /users/internal/{id}`) for service-to-service email lookup without JWT
 - [x] `product-service`: relational catalog (categories, products, size-based variants), public reads, staff-only writes (proven against missing-token and non-staff cases)
-- [x] `product-service`: `image_url` column on products; Nigerian food menu (19 dishes across 5 categories) with Unsplash images
+- [x] `product-service`: `image_url` column on products; Nigerian food menu (19 dishes across 5 categories) with real food photos
 - [x] Consistent `AuthJWTException` handling across all services — clean `401`/`403` responses instead of unhandled `500`s on missing/invalid tokens
-- [x] `order-service`: persistent cart, checkout with live price verification against `product-service`, order state machine (`draft → pending_payment → paid → shipped → awaiting_confirmation → delivered`), `order.placed` event published
+- [x] `order-service`: persistent cart, checkout with live price verification against `product-service`, order state machine (`draft → pending_payment → paid → shipped → awaiting_confirmation → delivered` / `disputed`), `order.placed` event published
 - [x] `order-service`: staff-only `GET /orders/all` endpoint returning all users' active orders
-- [x] `order-service`: customer `PATCH /orders/{id}/confirm-delivery` endpoint for delivery confirmation
+- [x] `order-service`: customer `PATCH /orders/{id}/confirm-delivery` and `PATCH /orders/{id}/dispute-delivery` endpoints
 - [x] `payment-service`: Paystack initialize+verify flow (test mode, NGN), HMAC-SHA512 webhook signature verification, transaction re-verification with Paystack API, `payment.succeeded`/`payment.failed` events published, order status updated via internal HTTP call
 - [x] `payment-service`: full pytest suite (55 tests) — initialize, webhook security, webhook processing, retry-with-backoff
 - [x] Webhook handler returns `200` immediately after signature verification and processes in a background task (Paystack's 30s delivery timeout safety)
 - [x] Retry-with-backoff for the payment→order status propagation call, tested against transient failures and network errors
 - [x] Reconciliation script (`scripts/reconcile_payments.py`) — detects and repairs payment/order status mismatches; tested against a real induced mismatch, not just designed
 - [x] Reconciliation running on a schedule via cron (`scripts/run_reconciliation.sh`) with logging and log rotation
-- [x] `shipping-service`: auto-created on `payment.succeeded` by `shipping-service-worker`; staff dispatch/notify-customer; customer tracking; state machine (`pending → dispatched → delivered`); 46 tests (service + route layer)
-- [x] `shipping-service`: `PATCH /{id}/notify-customer` — sets order to `awaiting_confirmation`, sends customer confirmation email, auto-confirmed after 2hrs by cron
+- [x] `shipping-service`: auto-created on `payment.succeeded` by `shipping-service-worker`; staff dispatch/notify-customer; customer tracking; 46 tests (service + route layer)
+- [x] `shipping-service`: `PATCH /{id}/notify-customer` — sets order to `awaiting_confirmation` (not straight to `delivered`), sends customer confirmation email
 - [x] `shipping-service-worker`: consumes `payment.succeeded`, auto-creates pending shipment for every paid order
 - [x] `order-service-worker`: consumes `shipment.dispatched`, `shipment.delivery_pending`, `shipment.delivered` via aio-pika; drives order state machine idempotently
+- [x] Delivery confirmation flow: customer explicitly confirms or disputes after rider-reported delivery, rather than a single "mark delivered" action collapsing two different facts into one
+- [x] Auto-confirm cron (`scripts/auto_confirm_delivery.py`) — finds orders in `awaiting_confirmation` for >2hrs with no customer response, marks delivered via order-service API
+- [x] Disputed orders surfaced distinctly on the staff dashboard (separate stat card, red-flagged, sorted to top) for investigation, instead of silently resolving to `delivered`
 - [x] `notification-service`: pure-consumer worker (aio-pika) — 5 email types: payment confirmed, payment failed, on the way, delivery confirmation request, delivered; idempotency guard; audit log
-- [x] Auto-confirm cron (`scripts/auto_confirm_delivery.py`) — finds orders in `awaiting_confirmation` for >2hrs, marks delivered via order-service API
+- [x] Migrated email provider from AWS SES (sandbox-restricted, one verified recipient only) to Resend — verified sending domain (`chopnownow.com`, DKIM/SPF/DMARC), any recipient can now receive real emails without individual verification
+- [x] `realtime-service`: Node + Socket.io consumer bridging all 4 RabbitMQ exchanges to browser WebSocket clients — live order-status updates on the frontend with no polling
 - [x] UUID casting at route layer — consistent across all services, fixes SQLite test compatibility
-- [x] Per-service pytest suites running inside containers (367 tests across 6 services: 78 + 30 + 56 + 62 + 55 + 46 + 40)
+- [x] Per-service pytest suites running inside containers (367+ tests across 6 services: 78 + 30 + 56 + 62 + 55 + 46 + 40)
 - [x] Automated E2E test script covering full user journey across all services including shipping lifecycle and delivery confirmation
 - [x] React SPA (Vite + Tailwind) — Glovo-inspired design: dark navy hero, Nigerian orange accent, warm cream background
-- [x] Nigerian food menu with real food photos (Unsplash), per-product emoji fallbacks, category pills
-- [x] Order tracking timeline (5-step visual progress indicator on order detail page)
-- [x] Staff dashboard — all-orders view across all users, dispatch and notify-customer buttons
-- [x] Customer delivery confirmation button (`awaiting_confirmation` → `delivered`)
+- [x] Rebranded from "Pizzasale" to **Chop Now**, reflecting the actual menu (Nigerian dishes, not pizza) — new logo, copy, and domain
+- [x] Nigerian food menu with real food photos, per-product emoji fallbacks, category pills
+- [x] Order tracking timeline — now updates live via WebSocket instead of only refreshing on page load
+- [x] Staff dashboard — all-orders view across all users, dispatch and notify-customer buttons, dedicated disputed-orders handling
+- [x] Customer delivery confirmation and dispute buttons (`awaiting_confirmation` → `delivered` or `disputed`)
 - [x] Forgot password / reset password pages with 1-hour token expiry
-- [x] nginx reverse proxy serving the React app and routing `/api/*` to all 6 backend services — same-origin, no CORS
-- [ ] API gateway / service-to-service auth
-- [ ] SES production access (currently sandbox — verified recipients only)
+- [x] nginx reverse proxy serving the React app, routing `/api/*` to all backend services and `/ws/*` to `realtime-service` — same-origin, no CORS
+- [x] Purchased and DNS-configured production domain (`chopnownow.com`); deployed live behind Caddy with automatic HTTPS
+- [x] Full CI/CD pipeline (GitHub Actions): test gate → build & push 9 service images to GHCR → SSH deploy → on-server migrations → health checks → cron registration
+- [x] Idempotency gap identified and fixed in `payment-service`: a retried checkout call now returns the existing pending/succeeded payment for that order instead of creating a second Paystack transaction, preventing potential double-charging on client-side timeout retries
 - [ ] Admin/staff-promotion endpoint (currently `is_staff` is only settable directly in Postgres)
 - [ ] Reconciliation alerting — currently a failed fix only logs to stderr; no Slack/PagerDuty integration yet
-- [ ] `notification-service` tests — handler unit tests, template tests, idempotency tests
-- [ ] Real Nigerian food photos (current Unsplash images are generic approximations)
+- [ ] `notification-service` and `realtime-service` tests — handler unit tests, template tests, idempotency tests, socket event tests
+- [ ] Dispute resolution workflow — currently a disputed order surfaces for staff investigation but has no resolution action (refund, redeliver, close) built yet
 
 ---
-
-## Why This Project Exists
-
-Built as a hands-on engineering project to practice production-relevant patterns across the full stack: async Python microservices, JWT auth and cross-service token verification, database-per-service architecture, event-driven service communication via RabbitMQ (with both pika and aio-pika, having learned the hard way that blocking consumers and async SQLAlchemy drivers cannot share an event loop), relational data modeling for a real domain, real payment gateway integration (Paystack initialize+verify with webhook signature verification), transactional email notifications (AWS SES via a pure-consumer async worker), containerized local dev that mirrors how a real deployment would be wired, and a React frontend served through an nginx reverse proxy — all connected into one working system rather than isolated demos. Several real production failure modes were deliberately worked through rather than avoided, including Postgres network/auth configuration across shifting Docker subnets, Docker layer-cache and BuildKit tuning, consumer idempotency under genuine message redelivery, an unhandled-exception gap in JWT error handling caught by testing the unhappy path rather than assuming it worked, authorization boundaries verified with actual cross-user and cross-permission requests, the deliberate choice of synchronous vs. asynchronous communication based on the actual requirements of each interaction rather than defaulting to one pattern everywhere, the explicit rejection of distributed-transaction atomicity in favor of a saga pattern with retry-with-backoff and reconciliation (tested against a real induced mismatch), the event loop conflict between pika's blocking connection model and asyncpg that forced a migration to aio-pika for all async consumers, and a delivery confirmation flow designed around real business logic — rider reports delivery, customer gets notified to confirm, 2-hour auto-confirm cron fires if they don't — rather than a simple "mark delivered" button.
