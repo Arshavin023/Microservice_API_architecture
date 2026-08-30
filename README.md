@@ -37,7 +37,6 @@ This project follows eleven complementary patterns:
 All 7 Postgres databases run on a single host-managed PostgreSQL instance
 (outside Docker Compose — containers connect via host.docker.internal locally,
 or localhost directly on the production server where Postgres runs alongside Docker).
-```
 
 **Why event-driven instead of a direct API call?** A direct call (`auth-service` → `POST user-service/users`) would couple the two services' uptime together — if `user-service` is down or slow, registration breaks too, even though registration itself succeeded. Publishing an event instead means `auth-service` doesn't wait on anyone; `user-service` consumes the event whenever it's able to, and the same event can later be consumed by other services (e.g. a future `notification-service`) without ever touching `auth-service`'s code.
 
@@ -66,7 +65,6 @@ or localhost directly on the production server where Postgres runs alongside Doc
 **Why does the customer eventually get auto-confirmed after 2 hours instead of the order hanging forever?** Most customers who received their food correctly will simply never click "confirm" — not because anything is wrong, but because there's no reason for a satisfied customer to open the app again. If `awaiting_confirmation` had no expiry, the large majority of successful orders would sit in an unresolved state indefinitely, making that status useless as a signal of anything. The 2-hour cron (`scripts/auto_confirm_delivery.py`) auto-confirms silent orders, while a customer who genuinely didn't receive their order still has that full window to click "dispute" instead — the auto-confirm is a default for silence, not a way to suppress a real complaint.
 
 **Why is `realtime-service` a separate Node process instead of adding WebSocket support to an existing FastAPI service?** None of the existing services own "the current state of an order across its whole lifecycle" — that state is scattered across `order-service`, `shipping-service`, and the events between them. Bolting a WebSocket endpoint onto any one of those services would mean that service now also owns broadcasting events it didn't originate, coupling an unrelated concern to its actual responsibility. A dedicated consumer that only listens to the shared RabbitMQ exchanges and forwards events to subscribed browser clients keeps that responsibility isolated, and means the WebSocket layer can be scaled, restarted, or replaced independently of every other service — it holds no state in a database at all, so there is nothing to migrate or reconcile if it goes down and restarts.
-```
 
 ---
 
