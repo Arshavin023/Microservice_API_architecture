@@ -1,6 +1,6 @@
 # Chop Now
 
-![Chop Now Architecture Diagram](./images/architecture.jpeg)
+![Chop Now Architecture Diagram](images/architecture.jpeg)
 
 A microservices-based food delivery platform for Nigerian cuisine, built with **FastAPI**, **PostgreSQL**, **RabbitMQ**, **Socket.io**, and a **React** frontend. Deployed live at [chopnownow.com](https://chopnownow.com).
 
