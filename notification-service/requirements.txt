@@ -10,3 +10,6 @@ aio-pika
 httpx
 boto3
 resend
+sqlalchemy[asyncio]
+psycopg[binary]
+greenlet

@@ -14,3 +14,6 @@ pytest-asyncio
 aiosqlite
 PyJWT
 aio-pika
+sqlalchemy[asyncio]
+psycopg[binary]
+greenlet

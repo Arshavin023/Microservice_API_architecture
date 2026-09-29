@@ -17,3 +17,6 @@ pytest-asyncio>=0.23
 httpx
 aiosqlite
 resend
+sqlalchemy[asyncio]
+psycopg[binary]
+greenlet

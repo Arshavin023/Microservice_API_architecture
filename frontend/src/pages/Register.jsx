@@ -3,6 +3,20 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Pizza, Loader2 } from 'lucide-react'
 import { authApi } from '../api'
 
+function formatError(detail) {
+  if (!detail) return 'Registration failed.'
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map(d => {
+        const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : 'field'
+        return `${field}: ${d.msg}`
+      })
+      .join(' ')
+  }
+  return 'Registration failed.'
+}
+
 export default function Register() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ username: '', email: '', password: '' })
@@ -19,8 +33,7 @@ export default function Register() {
       setSuccess(res.data.detail || 'Account created! Check your email to verify.')
       setTimeout(() => navigate('/login'), 3000)
     } catch (err) {
-      const detail = err.response?.data?.detail
-      setError(typeof detail === 'string' ? detail : 'Registration failed.')
+      setError(formatError(err.response?.data?.detail))
     } finally {
       setLoading(false)
     }

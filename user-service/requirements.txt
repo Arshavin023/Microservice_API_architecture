@@ -11,3 +11,6 @@ fastapi_jwt_auth2
 pytest_asyncio
 aiosqlite
 httpx
+sqlalchemy[asyncio]
+psycopg[binary]
+greenlet

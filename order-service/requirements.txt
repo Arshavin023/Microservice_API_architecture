@@ -14,3 +14,6 @@ aiosqlite
 PyJWT
 pytest
 pytest-asyncio
+sqlalchemy[asyncio]
+psycopg[binary]
+greenlet
