@@ -9,8 +9,10 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
 
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      # - "5672:5672"
+      # - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
 
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
@@ -30,7 +32,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_MULTIPLE_DATABASES: "auth_service_db,user_service_db,product_service_db,order_service_db,payment_service_db,shipping_service_db,notification_service_db"
     ports:
-      - "5433:5432"
+      # - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db-init:/docker-entrypoint-initdb.d   # <--- Maps your script into the container
