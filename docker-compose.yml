@@ -21,6 +21,25 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_MULTIPLE_DATABASES: "auth_service_db,user_service_db,product_service_db,order_service_db,payment_service_db,shipping_service_db,notification_service_db"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d   # <--- Maps your script into the container
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
   auth-service:
     build: ./auth-service
     container_name: auth-service
@@ -28,6 +47,8 @@ services:
 
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
     env_file:
@@ -54,6 +75,8 @@ services:
 
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
     env_file:
@@ -83,6 +106,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
 
     env_file:
       - .env
@@ -104,12 +129,16 @@ services:
     container_name: product-service
     restart: always
 
+    depends_on:
+      postgres:
+        condition: service_healthy
+
     env_file:
       - .env
 
     environment:
       DATABASE_URL: ${PRODUCT_DATABASE_URL}
-
+      
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -126,6 +155,8 @@ services:
 
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
     env_file:
@@ -154,6 +185,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
 
     env_file:
       - .env
@@ -170,19 +203,6 @@ services:
 
     command: ["python", "-m", "app.workers.consumer"]
 
-  frontend:
-    build: ./frontend
-    container_name: frontend
-    restart: always
-    depends_on:
-      - auth-service
-      - user-service
-      - product-service
-      - order-service
-      - payment-service
-      - shipping-service
-    ports:
-      - "3000:80"
   payment-service:
     build: ./payment-service
     container_name: payment-service
@@ -190,6 +210,8 @@ services:
 
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
     env_file:
@@ -203,7 +225,7 @@ services:
       PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY}
       # ENVIRONMENT: testing
       # MOCK_PAYSTACK: "true"
-
+      
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -220,6 +242,8 @@ services:
 
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
     env_file:
@@ -243,9 +267,13 @@ services:
     build: ./shipping-service
     container_name: shipping-service-worker
     restart: always
+
     depends_on:
       rabbitmq:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+
     env_file:
       - .env
     environment:
@@ -261,9 +289,13 @@ services:
     build: ./notification-service
     container_name: notification-service
     restart: always
+
     depends_on:
       rabbitmq:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+
     env_file:
       - .env
     environment:
@@ -272,11 +304,25 @@ services:
       USER_SERVICE_URL:      http://user-service:8000
       RESEND_API_KEY:        ${RESEND_API_KEY}
       SES_SENDER_EMAIL:      ${SES_SENDER_EMAIL}
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./notification-service:/app
-      
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    restart: always
+    depends_on:
+      - auth-service
+      - user-service
+      - product-service
+      - order-service
+      - payment-service
+      - shipping-service
+    ports:
+      - "3000:80" 
   realtime-service:
     build: ./realtime-service
     container_name: realtime-service
@@ -293,5 +339,6 @@ services:
 
 volumes:
   rabbitmq_data:
+  postgres_data:
 
 

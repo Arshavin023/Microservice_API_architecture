@@ -1,4 +1,4 @@
--- Pizzasale Nigerian Menu Seed
+-- Pizzasale Nigerian Menu Seed with Image URLs
 -- Run: sudo -u postgres psql -d product_service_db -f seed_nigerian_menu.sql
 
 BEGIN;
@@ -18,12 +18,13 @@ INSERT INTO categories (id, name, description, is_active, display_order, created
 -- ── RICE DISHES ─────────────────────────────────────────────────────────────
 
 -- 1. Party Jollof Rice
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Rice Dishes'),
        'Party Jollof Rice',
        'Smoky party-style jollof rice cooked in rich tomato and pepper stew over firewood. The real deal.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1800.00, true, now(), now() FROM products WHERE name = 'Party Jollof Rice'
@@ -33,12 +34,13 @@ UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,  4500.00, true, now(), now() FROM products WHERE name = 'Party Jollof Rice';
 
 -- 2. Fried Rice
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Rice Dishes'),
        'Fried Rice',
        'Nigerian-style stir-fried rice with mixed vegetables, curry, liver, green peas, and shrimp.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1800.00, true, now(), now() FROM products WHERE name = 'Fried Rice'
@@ -50,12 +52,13 @@ SELECT gen_random_uuid(), id, 'large'::sizeenum,  4500.00, true, now(), now() FR
 -- ── SOUPS ───────────────────────────────────────────────────────────────────
 
 -- 3. Egusi Soup
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Soups'),
        'Egusi Soup',
        'Ground melon seeds cooked with assorted meat, stockfish, crayfish, and ugu leaves in palm oil. Best with swallow.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1500.00, true, now(), now() FROM products WHERE name = 'Egusi Soup'
@@ -65,12 +68,13 @@ UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,  4000.00, true, now(), now() FROM products WHERE name = 'Egusi Soup';
 
 -- 4. Vegetable Soup
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Soups'),
        'Vegetable Soup',
        'Fresh ugu and waterleaf cooked with palm oil, crayfish, stockfish, and assorted meat.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1500.00, true, now(), now() FROM products WHERE name = 'Vegetable Soup'
@@ -80,12 +84,13 @@ UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,  4000.00, true, now(), now() FROM products WHERE name = 'Vegetable Soup';
 
 -- 5. Afang Soup
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Soups'),
        'Afang Soup',
        'Cross River delicacy — afang leaves with waterleaf, periwinkle, assorted meat, and crayfish in rich palm oil.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1800.00, true, now(), now() FROM products WHERE name = 'Afang Soup'
@@ -95,12 +100,13 @@ UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,  5000.00, true, now(), now() FROM products WHERE name = 'Afang Soup';
 
 -- 6. Ogbono Soup
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Soups'),
        'Ogbono Soup',
        'Draw soup made with ground ogbono seeds, assorted meat, crayfish, and vegetables. Silky and satisfying.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1500.00, true, now(), now() FROM products WHERE name = 'Ogbono Soup'
@@ -110,12 +116,13 @@ UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,  4000.00, true, now(), now() FROM products WHERE name = 'Ogbono Soup';
 
 -- 7. Bitterleaf Soup
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Soups'),
        'Bitterleaf Soup',
        'Washed bitterleaf cooked with cocoyam, assorted meat, stockfish, and crayfish. An Igbo classic.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1500.00, true, now(), now() FROM products WHERE name = 'Bitterleaf Soup'
@@ -126,41 +133,44 @@ SELECT gen_random_uuid(), id, 'large'::sizeenum,  4000.00, true, now(), now() FR
 
 -- ── SWALLOW ─────────────────────────────────────────────────────────────────
 
--- Each swallow is a separate product with one size (portion)
-
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Swallow'),
-       'Eba', 'Firm garri swallow. Order with any soup.', true, now(), now();
+       'Eba', 'Firm garri swallow. Order with any soup.', true, now(), now(),
+       'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'portion'::sizeenum, 500.00, true, now(), now() FROM products WHERE name = 'Eba';
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Swallow'),
-       'Fufu', 'Smooth pounded cassava swallow. Best with draw soups.', true, now(), now();
+       'Fufu', 'Smooth pounded cassava swallow. Best with draw soups.', true, now(), now(),
+       'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'portion'::sizeenum, 500.00, true, now(), now() FROM products WHERE name = 'Fufu';
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Swallow'),
-       'Semo', 'Soft semolina swallow with a neutral taste that pairs with any soup.', true, now(), now();
+       'Semo', 'Soft semolina swallow with a neutral taste that pairs with any soup.', true, now(), now(),
+       'https://images.unsplash.com/photo-1616070829624-88405a603c96?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'portion'::sizeenum, 500.00, true, now(), now() FROM products WHERE name = 'Semo';
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Swallow'),
-       'Wheat Flour Meal', 'Whole wheat swallow with a slightly earthy flavour and smooth texture.', true, now(), now();
+       'Wheat Flour Meal', 'Whole wheat swallow with a slightly earthy flavour and smooth texture.', true, now(), now(),
+       'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'portion'::sizeenum, 600.00, true, now(), now() FROM products WHERE name = 'Wheat Flour Meal';
 
 -- ── SIDES & EXTRAS ───────────────────────────────────────────────────────────
 
 -- 8. Moi Moi
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Sides & Extras'),
        'Moi Moi',
        'Steamed bean pudding with peppers, onions, eggs, and fish. Soft, savoury, and filling.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  700.00, true, now(), now() FROM products WHERE name = 'Moi Moi'
@@ -168,12 +178,13 @@ UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum, 1200.00, true, now(), now() FROM products WHERE name = 'Moi Moi';
 
 -- 9. Beans and Plantain
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Sides & Extras'),
        'Beans and Plantain',
        'Peppered brown beans cooked with palm oil and onions, served with sweet fried plantain (dodo).',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'regular'::sizeenum, 1500.00, true, now(), now() FROM products WHERE name = 'Beans and Plantain'
@@ -181,12 +192,13 @@ UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,   2500.00, true, now(), now() FROM products WHERE name = 'Beans and Plantain';
 
 -- 10. Fried Plantain
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(),
        (SELECT id FROM categories WHERE name = 'Sides & Extras'),
        'Fried Plantain (Dodo)',
        'Golden sweet ripe plantain slices, fried to perfection. Great as a side with any meal.',
-       true, now(), now();
+       true, now(), now(),
+       'https://images.unsplash.com/photo-1628191010210-a59de33e56b6?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,   600.00, true, now(), now() FROM products WHERE name = 'Fried Plantain (Dodo)'
@@ -197,41 +209,46 @@ SELECT gen_random_uuid(), id, 'large'::sizeenum,  1500.00, true, now(), now() FR
 
 -- ── PROTEINS ────────────────────────────────────────────────────────────────
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Proteins'),
-       'Beef', 'Seasoned and slow-cooked beef pieces. Add to any meal.', true, now(), now();
+       'Beef', 'Seasoned and slow-cooked beef pieces. Add to any meal.', true, now(), now(),
+       'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  800.00, true, now(), now() FROM products WHERE name = 'Beef'
 UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum, 1500.00, true, now(), now() FROM products WHERE name = 'Beef';
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Proteins'),
-       'Chicken', 'Peppered or grilled chicken. Choose your size.', true, now(), now();
+       'Chicken', 'Peppered or grilled chicken. Choose your size.', true, now(), now(),
+       'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'half'::sizeenum,  1500.00, true, now(), now() FROM products WHERE name = 'Chicken'
 UNION ALL
 SELECT gen_random_uuid(), id, 'full'::sizeenum,  2800.00, true, now(), now() FROM products WHERE name = 'Chicken';
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Proteins'),
-       'Turkey', 'Oven-roasted turkey pieces, richly seasoned.', true, now(), now();
+       'Turkey', 'Oven-roasted turkey pieces, richly seasoned.', true, now(), now(),
+       'https://images.unsplash.com/photo-1518492104633-130d0cc84637?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  2000.00, true, now(), now() FROM products WHERE name = 'Turkey'
 UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,  3500.00, true, now(), now() FROM products WHERE name = 'Turkey';
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Proteins'),
-       'Fish', 'Seasoned fried or grilled fish. Tilapia or catfish available.', true, now(), now();
+       'Fish', 'Seasoned fried or grilled fish. Tilapia or catfish available.', true, now(), now(),
+       'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1000.00, true, now(), now() FROM products WHERE name = 'Fish'
 UNION ALL
 SELECT gen_random_uuid(), id, 'large'::sizeenum,  2000.00, true, now(), now() FROM products WHERE name = 'Fish';
 
-INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at)
+INSERT INTO products (id, category_id, name, description, is_available, created_at, updated_at, image_url)
 SELECT gen_random_uuid(), (SELECT id FROM categories WHERE name = 'Proteins'),
-       'Goat Meat', 'Tender peppered goat meat, slow-cooked to perfection.', true, now(), now();
+       'Goat Meat', 'Tender peppered goat meat, slow-cooked to perfection.', true, now(), now(),
+       'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=600&q=80'; --[cite: 3]
 INSERT INTO product_variants (id, product_id, size, price, is_available, created_at, updated_at)
 SELECT gen_random_uuid(), id, 'small'::sizeenum,  1200.00, true, now(), now() FROM products WHERE name = 'Goat Meat'
 UNION ALL

@@ -14,4 +14,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY . .
 
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
+
+# Use entrypoint to run migrations, then hand off to CMD
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 CMD ["python", "-m", "app.workers.consumer"]
