@@ -1,22 +1,55 @@
-# Fresh token
 TOKEN=$(curl -s -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"testuser","password":"TestPass123!"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['access'])")
 
-# Add item to cart
+PRODUCT_ID="019eec18-1acd-7541-8079-2d5d72757245"
+VARIANT_ID="019eec18-1ae1-704a-990b-d6fd310a879b"
+
 curl -X POST http://localhost:8004/cart/items \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"product_id\":\"$PRODUCT_ID\",\"variant_id\":\"$VARIANT_ID\",\"product_name\":\"Margherita\",\"size\":\"large\",\"unit_price\":14.99,\"quantity\":1}"
 
-# Checkout — get authorization_url
 curl -s -X POST http://localhost:8004/checkout \
   -H "Authorization: Bearer $TOKEN" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print('Order:', d['id']); print('Pay at:', d['authorization_url'])"
   
 sleep 5
 sudo -u postgres psql -d order_service_db \
-  -c "SELECT id, status FROM orders ORDER BY created_at DESC LIMIT 1;"
+  -c "SELECT id, status,created_at FROM orders ORDER BY created_at DESC LIMIT 1;"
 sudo -u postgres psql -d payment_service_db \
-  -c "SELECT order_id, status, paystack_reference FROM payments ORDER BY created_at DESC LIMIT 1;"
+  -c "SELECT order_id, status, paystack_reference,created_at FROM payments ORDER BY created_at DESC LIMIT 1;"
+  
+  
+  
+  
+ Testing reconciliation script
+ TOKEN=$(curl -s -X POST http://localhost:8001/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"TestPass123!"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access'])")
+
+PRODUCT_ID="019eec18-1acd-7541-8079-2d5d72757245"
+VARIANT_ID="019eec18-1ae1-704a-990b-d6fd310a879b"
+
+curl -X POST http://localhost:8004/cart/items \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"product_id\":\"$PRODUCT_ID\",\"variant_id\":\"$VARIANT_ID\",\"product_name\":\"Margherita\",\"size\":\"large\",\"unit_price\":14.99,\"quantity\":1}"
+
+curl -s -X POST http://localhost:8004/checkout \
+  -H "Authorization: Bearer $TOKEN" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print('Order:', d['id'])"
+  
+  
+ORDER_ID= "019f185f-54e9-762c-b7fe-8fa5db51bf3d"
+sudo -u postgres psql -d payment_service_db -c "
+UPDATE payments
+SET status = 'succeeded', updated_at = now()
+WHERE order_id = '${ORDER_ID}'
+RETURNING order_id, status, paystack_reference;"
+
+
+~/pizzasale_api/scripts/run_reconciliation.sh
+cat ~/pizzasale_api/scripts/logs/reconcile.log

@@ -35,7 +35,7 @@ from datetime import datetime, timedelta
 
 ORDER_DB_URL = os.getenv(
     "ORDER_DATABASE_URL_SYNC",
-    "postgresql://microservices:UcheJudeNnodim3420878321@localhost:5432/order_service_db",
+    "postgresql://postgres:UcheJudeNnodim3420878321@localhost:5433/order_service_db",
 )
 ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL_LOCAL", "http://localhost:8004")
 AUTO_CONFIRM_HOURS = 2
